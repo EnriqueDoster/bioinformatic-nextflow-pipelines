@@ -8,9 +8,6 @@ vim: syntax=groovy
 if (params.help ) {
     return help()
 }
-if( !nextflow.version.matches('0.25+') ) {
-    return nextflow_version_error()
-}
 if( params.host_index ) { 
     host_index = Channel.fromPath(params.host_index).toSortedList() 
     //if( host_index.isEmpty() ) return index_error(host_index)
@@ -32,7 +29,7 @@ if( params.annotation ) {
     if( !annotation.exists() ) return annotation_error(annotation)
 }
 
-KRAKENDB = params.KRAKENDB
+kraken_db = params.kraken_db
 threads = params.threads
 
 threshold = params.threshold
