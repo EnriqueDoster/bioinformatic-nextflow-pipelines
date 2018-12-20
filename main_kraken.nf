@@ -55,6 +55,8 @@ threads = params.threads
 smem_threads = params.smem_threads
 threshold = params.threshold
 
+kraken_db = params.kraken_db
+
 min = params.min
 max = params.max
 skip = params.skip
@@ -85,14 +87,56 @@ process RunKraken {
        set sample_id, file(forward), file(reverse) from reads
 
     output:
-       file("${sample_id}.kraken.filtered.report") into
-       kraken_report
+       file("${sample_id}.kraken.filtered.report") into kraken_filter_report
+       file("${sample_id}.kraken.report") into kraken_report
 
     """
     kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
     kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.filtered.raw
     """
 }
+
+kraken_report.toSortedList().set { kraken_l_to_w }
+kraken_filter_report.toSortedList().set { kraken_filter_l_to_w }
+
+process KrakenLongToWide {
+    tag { }
+
+    publishDir "${params.output}/KrakenLongToWide", mode: "copy"
+
+    input:
+        file(kraken_reports) from kraken_l_to_w
+
+    output:
+        file("kraken_analytic_matrix.csv") into kraken_master_matrix
+
+    """
+    mkdir ret
+    python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
+    mv ret/kraken_analytic_matrix.csv .
+    """
+}
+
+process FilteredKrakenLongToWide {
+    tag { }
+
+    publishDir "${params.output}/Filtered_KrakenLongToWide", mode: "copy"
+
+    input:
+        file(kraken_reports) from kraken_l_to_w
+
+    output:
+        file("filtered_kraken_analytic_matrix.csv") into kraken_master_matrix
+
+    """
+    mkdir ret
+    python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
+    mv ret/filtered_kraken_analytic_matrix.csv .
+    """
+}
+
+
+
 
 
 def nextflow_version_error() {
