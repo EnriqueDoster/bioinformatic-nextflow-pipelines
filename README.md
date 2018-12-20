@@ -13,7 +13,7 @@ Additionally, you may want to know if the depth of your sequencing (how many rea
 With AmrPlusPlus, you will obtain count files for each sample that can be combined into a count matrix and analyzed using any statistical and mathematical techniques that can operate on a matrix of observations.
 
 ## Example command:
-nextflow main.nf --reads " PATH/to/files/*_R{1,2}_001.fastq.gz " --kraken_db $krakendir --output $outputDir --threads 1 -w $workingDIR -profile local
+nextflow main.nf --reads " PATH/to/files/*_R{1,2}_001.fastq.gz " --kraken_db $krakendir --output $outputDir --threads 1 -w $workingDIR --host $HOSTFASTA -profile local
 
 More Information
 ----------------
