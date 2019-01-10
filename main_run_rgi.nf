@@ -70,7 +70,7 @@ Channel
     .ifEmpty { exit 1, "Read pair files could not be found: ${params.reads}" }
     .set { reads }
 
-process AlignToAMR {
+process RunRGI {
      tag { sample_id }
 
      publishDir "${params.output}/RunRGI", mode: "copy"
