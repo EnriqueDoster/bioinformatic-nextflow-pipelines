@@ -71,14 +71,18 @@ Channel
     .fromFilePairs( params.reads, flat: true )
     .ifEmpty { exit 1, "Read pair files could not be found: ${params.reads}" }
     .set { reads }
+Channel
+    .fromFilePairs( params.reads, flat: true )
+    .ifEmpty { exit 1, "Read pair files could not be found: ${params.reads}" }
+    .set { reads }
 
 process RunKraken {
     tag { sample_id }
     publishDir "${params.output}/RunKraken", mode: 'copy',
         saveAs: { filename ->
             if(filename.indexOf(".kraken.raw") > 0) "Standard/$filename"
-            else if(filename.indexOf(".kraken.report") > 0) "Standard/$filename"
-            else if(filename.indexOf(".kraken.filtered.report") > 0) "Filtered/$filename"
+            else if(filename.indexOf(".kraken.report") > 0) "Standard_report/$filename"
+            else if(filename.indexOf(".kraken.filtered.report") > 0) "Filtered_report/$filename"
             else if(filename.indexOf(".kraken.filtered.raw") > 0) "Filtered/$filename"
             else {}
         }
@@ -87,12 +91,19 @@ process RunKraken {
        set sample_id, file(forward), file(reverse) from reads
 
     output:
+       file("${sample_id}.kraken.report") into (kraken_report,kraken_extract_taxa)
+       set sample_id, file("${sample_id}.kraken.raw") into kraken_raw
        file("${sample_id}.kraken.filtered.report") into kraken_filter_report
-       file("${sample_id}.kraken.report") into kraken_report
+       file("${sample_id}.kraken.filtered.raw") into kraken_filter_raw
+       file("${sample_id}.copy.R1.fastq") into forward_reads
+       file("${sample_id}.copy.R2.fastq") into reverse_reads     
+
 
     """
     kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
     kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.filtered.raw
+    gunzip -c ${forward} > ${sample_id}.copy.R1.fastq
+    gunzip -c ${reverse} > ${sample_id}.copy.R2.fastq    
     """
 }
 
@@ -100,7 +111,7 @@ kraken_report.toSortedList().set { kraken_l_to_w }
 kraken_filter_report.toSortedList().set { kraken_filter_l_to_w }
 
 process KrakenLongToWide {
-    tag { }
+    tag { sample_id }
 
     publishDir "${params.output}/KrakenLongToWide", mode: "copy"
 
@@ -109,8 +120,10 @@ process KrakenLongToWide {
 
     output:
         file("kraken_analytic_matrix.csv") into kraken_master_matrix
+        file("TaxaID.txt") into taxa_ID
 
     """
+    grep 'Salmonella enterica' ${kraken_reports} | cut -s -f 5 | sort | uniq > TaxaID.txt
     mkdir ret
     python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
     mv ret/kraken_analytic_matrix.csv .
@@ -118,25 +131,50 @@ process KrakenLongToWide {
 }
 
 process FilteredKrakenLongToWide {
-    tag { }
+    tag { sample_id }
 
     publishDir "${params.output}/Filtered_KrakenLongToWide", mode: "copy"
 
     input:
-        file(kraken_reports) from kraken_l_to_w
+        file(kraken_reports) from kraken_filter_l_to_w
 
     output:
-        file("filtered_kraken_analytic_matrix.csv") into kraken_master_matrix
+        file("filtered_kraken_analytic_matrix.csv") into filter_kraken_master_matrix
+        file("TaxaID.txt") into filter_taxa_ID
 
     """
+    grep 'Salmonella enterica' ${kraken_reports} | cut -s -f 5 | sort | uniq > TaxaID.txt
     mkdir ret
     python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
-    mv ret/filtered_kraken_analytic_matrix.csv .
+    mv ret/kraken_analytic_matrix.csv filtered_kraken_analytic_matrix.csv
     """
 }
 
+process ExtractTaxaReads {
+    tag { sample_id }
+    publishDir "${params.output}/TaxaReads", mode: 'copy'
 
+    input:
+       file(forward) from forward_reads
+       file(taxa_ID) from taxa_ID
+       set sample_id, file(raw_kraken) from kraken_raw
+       file(filter_kraken) from kraken_filter_raw
+       file(reverse) from reverse_reads
+    output:
+       file("${sample_id}.taxa.R1.fastq") into forward_taxa
+       file("${sample_id}.taxa.R2.fastq") into reverse_taxa
+       file("${sample_id}.filter.taxa.R1.fastq") into filter_forward_taxa
+       file("${sample_id}.filter.taxa.R2.fastq") into filter_reverse_taxa
+    """
+    awk 'NR==FNR{row[\$0]=1; next} row[\$3] {print \$2}' ${taxa_ID} ${raw_kraken} > ${sample_id}.taxa.read.headers.txt
+    python $baseDir/bin/extract_fastq_IDs.py ${forward} ${sample_id}.taxa.read.headers.txt ${sample_id}.taxa.R1.fastq
+    python $baseDir/bin/extract_fastq_IDs.py ${reverse} ${sample_id}.taxa.read.headers.txt ${sample_id}.taxa.R2.fastq
+    awk 'NR==FNR{row[\$0]=1; next} row[\$3] {print \$2}' ${taxa_ID} ${filter_kraken} > ${sample_id}.filter.taxa.read.headers.txt
+    python $baseDir/bin/extract_fastq_IDs.py ${forward} ${sample_id}.filter.taxa.read.headers.txt ${sample_id}.filter.taxa.R1.fastq
+    python $baseDir/bin/extract_fastq_IDs.py ${reverse} ${sample_id}.filter.taxa.read.headers.txt ${sample_id}.filter.taxa.R2.fastq
 
+    """
+}
 
 
 def nextflow_version_error() {
