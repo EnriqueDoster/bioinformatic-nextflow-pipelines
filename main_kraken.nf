@@ -50,9 +50,8 @@ if( params.hmm_group3 ) {
     hmm_group3 = file(params.hmm_group3)
 }
 
-
+species = "Salmonella enterica"
 threads = params.threads
-smem_threads = params.smem_threads
 threshold = params.threshold
 
 kraken_db = params.kraken_db
@@ -163,7 +162,7 @@ process ExtractTaxaReads {
     output:
        file("${sample_id}.taxa.R1.fastq") into forward_taxa
        file("${sample_id}.taxa.R2.fastq") into reverse_taxa
-       file("${sample_id}.filter.taxa.R1.fastq") into filter_forward_taxa
+       set sample_id , file("${sample_id}.filter.taxa.R1.fastq") into filter_forward_taxa
        file("${sample_id}.filter.taxa.R2.fastq") into filter_reverse_taxa
     """
     awk 'NR==FNR{row[\$0]=1; next} row[\$3] {print \$2}' ${taxa_ID} ${raw_kraken} > ${sample_id}.taxa.read.headers.txt
@@ -172,6 +171,37 @@ process ExtractTaxaReads {
     awk 'NR==FNR{row[\$0]=1; next} row[\$3] {print \$2}' ${taxa_ID} ${filter_kraken} > ${sample_id}.filter.taxa.read.headers.txt
     python $baseDir/bin/extract_fastq_IDs.py ${forward} ${sample_id}.filter.taxa.read.headers.txt ${sample_id}.filter.taxa.R1.fastq
     python $baseDir/bin/extract_fastq_IDs.py ${reverse} ${sample_id}.filter.taxa.read.headers.txt ${sample_id}.filter.taxa.R2.fastq
+
+    """
+}
+
+
+process BlastTaxaReads {
+    tag { sample_id }
+    
+    publishDir "${params.output}/BlastTaxaReads", mode: 'copy',  pattern: '*.out',
+    saveAs: { filename ->
+        if(filename.indexOf("taxa_reads_nr_filter.out") > 0) "Filtered_read_blast/$filename"
+        else if(filename.indexOf("taxa_reads_nr.out") > 0) "NoFilter_read_blast/$filename"
+        else {}
+    }
+    
+    input:
+       set sample_id, file(filter_forward) from filter_forward_taxa
+       file(filter_reverse) from filter_reverse_taxa
+       file(forward) from forward_taxa
+       file(reverse) from reverse_taxa   
+
+    output:
+       set sample_id , file("${sample_id}_taxa_reads_nr_filter.out") into filter_blast_out
+       file("${sample_id}_taxa_reads_nr.out") into blast_out
+       
+    """
+    fq2fa --merge --filter $filter_forward $filter_reverse ${sample_id}.filter.interleavened.fasta
+    blastn -db nt -query ${sample_id}.filter.interleavened.fasta -max_target_seqs 5 -out ${sample_id}_taxa_reads_nr_filter.out -remote -outfmt 6 
+
+    fq2fa --merge --filter $forward $reverse ${sample_id}.interleavened.fasta
+    blastn -db nt -query ${sample_id}.interleavened.fasta -max_target_seqs 5 -out ${sample_id}_taxa_reads_nr.out -remote    
 
     """
 }
