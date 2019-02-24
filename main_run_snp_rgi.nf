@@ -66,17 +66,17 @@ slidingwindow = params.slidingwindow
 minlen = params.minlen
 
 Channel
-    .fromFilePairs( params.Alignment_sam, flat: true )
-    .ifEmpty { exit 1, "sam files could not be found: ${params.Alignment_sam}" }
-    .set { Alignment_sam }
+    .fromPath( params.sams )
+    .ifEmpty { exit 1, "sam files could not be found: ${params.sams}" }
+    .set { sams }
 
-process RunRGI {
+process ExtractSNP {
      tag { sample_id }
 
      publishDir "${params.output}/ExtractMegaresSNP", mode: "copy"
 
      input:
-         set sample_id, file(sam) from Alignment_sam
+         set sample_id, file(sam) from sams
 
      output:
          set sample_id, file("${sample_id}.snp.fasta") into megares_snp_fasta
