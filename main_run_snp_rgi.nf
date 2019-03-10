@@ -122,7 +122,7 @@ process SNPconfirmation {
          set sample_id, file("${sample_id}*_hits.csv") into confirmed_counts
 
      """
-     python RGI_are_hits.py ${rgi}
+     python $baseDir/bin/RGI_are_hits.py ${rgi}
      """
 }
 
