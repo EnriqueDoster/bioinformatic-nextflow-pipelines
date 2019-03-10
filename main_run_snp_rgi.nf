@@ -65,10 +65,11 @@ trailing = params.trailing
 slidingwindow = params.slidingwindow
 minlen = params.minlen
 
+
 Channel
-    .fromPath( params.sams )
-    .ifEmpty { exit 1, "sam files could not be found: ${params.sams}" }
-    .set { sams }
+     .fromPath( params.sams,glob:true,type:"any")
+     .map { file -> tuple(file.baseName,file)}
+     .set {samFiles}
 
 process ExtractSNP {
      tag { sample_id }
@@ -76,13 +77,13 @@ process ExtractSNP {
      publishDir "${params.output}/ExtractMegaresSNP", mode: "copy"
 
      input:
-         set sample_id, file(sam) from sams
+         set sample_id, file(sam) from samFiles
 
      output:
-         set sample_id, file("${sample_id}.snp.fasta") into megares_snp_fasta
+         set sample_id, file("*.snp.fasta") into megares_snp_fasta
 
      """
-     awk -F "\t" '{if (\$1!="@SQ" && \$1!="@RG" && \$1!="@PG" && \$3="RequiresSNPConfirmation" ) {print ">"\$1"\n"\$10}}' ${sam} | tr -d '"'  > ${sample_id}.snp.fasta
+     awk -F "\\t" '{if (\$1!="@SQ" && \$1!="@RG" && \$1!="@PG" && \$3="RequiresSNPConfirmation" ) {print ">"\$1"\\n"\$10}}' ${sam} | tr -d '"'  > ${sample_id}.snp.fasta
      """
 }
 
@@ -121,7 +122,7 @@ process SNPconfirmation {
          set sample_id, file("${sample_id}*_hits.csv") into confirmed_counts
 
      """
-     python RGI_extract_counts.py ${rgi}
+     python RGI_are_hits.py ${rgi}
      """
 }
 
