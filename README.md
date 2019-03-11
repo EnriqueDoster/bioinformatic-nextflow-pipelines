@@ -14,8 +14,10 @@ With microbiome analysis of shotgun metagenomic reads, you may want to focus on 
 
 With AmrPlusPlus, you will obtain count files for each sample that can be combined into a count matrix and analyzed using any statistical and mathematical techniques that can operate on a matrix of observations.
 
-## Example command:
+## Example commands:
 nextflow main.nf --reads "PATH/to/files/*_R{1,2}_001.fastq.gz " --kraken_db $krakendir --output $outputDir --threads 1 -w $workingDIR --host $HOSTFASTA -profile local -species "Salmonella enterica"
+
+/s/angus/index/common/tools/nextflow run main_confirm_SNP_counts.nf --sams "/s/angus/index/common/tools/AlignToAMR/*_concatenated.amr.alignment.sam" --output /s/angus/index/common/tools/SNP_confirmation --threads 1 -w /s/angus/index/common/tools/work --host /s/angus/index/databases/bwa_indexes/mod_bos_taurus/mod_bos_taurus.fna -profile local -resume
 
 More Information
 ----------------
