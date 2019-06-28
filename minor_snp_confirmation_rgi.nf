@@ -5,6 +5,15 @@ vim: syntax=groovy
 -*- mode: groovy;-*-
 */
 
+/*
+Script workflow: 
+1.Take sam file of alignment to megares.
+2.Search for reads classified to genes with "RequiresSNPConfirmation" in their header.
+3.Create fasta file of these reads. 
+4.Use fasta files to classify using RGI
+*/
+
+
 if (params.help ) {
     return help()
 }
@@ -103,28 +112,6 @@ process RunRGI {
      """
 }
 
-
-process SNPconfirmation {
-     tag { sample_id }
-
-     publishDir "${params.output}/SNPConfirmation", mode: "copy",
-         saveAs: { filename ->
-             if(filename.indexOf("_rgi_perfect_hits.csv") > 0) "Perfect_RGI/$filename"
-             else if(filename.indexOf("_rgi_strict_hits.csv") > 0) "Strict_RGI/$filename"
-             else if(filename.indexOf("_rgi_loose_hits.csv") > 0) "Loose_RGI/$filename"
-             else {}
-         }
-
-     input:
-         set sample_id, file(rgi) from rgi_results
-
-     output:
-         set sample_id, file("${sample_id}*_hits.csv") into confirmed_counts
-
-     """
-     python $baseDir/bin/RGI_are_hits.py ${rgi}
-     """
-}
 
 
 
