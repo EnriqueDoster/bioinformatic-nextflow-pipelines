@@ -65,10 +65,94 @@ trailing = params.trailing
 slidingwindow = params.slidingwindow
 minlen = params.minlen
 
+
 Channel
     .fromFilePairs( params.reads, flat: true )
     .ifEmpty { exit 1, "Read pair files could not be found: ${params.reads}" }
     .set { reads }
+
+
+
+if( !params.amr_index ) {
+   process BuildAMRIndex {
+       tag { amr.baseName }
+
+       input:
+           file(amr)
+
+       output:
+           file '*' into (amr_index)
+
+       """
+       bwa index ${amr}
+       """
+   }
+}
+
+process AlignToAMR {
+     tag { sample_id }
+
+     publishDir "${params.output}/AlignToAMR", mode: "copy"
+
+     input:
+         set sample_id, file(forward), file(reverse) from reads
+         file index from amr_index.first()
+         file amr
+
+     output:
+         set sample_id, file("${sample_id}.amr.alignment.sam") into (megares_resistome_sam, megares_rarefaction_sam, megares_snp_sam , megares_snpfinder_sam)
+         set sample_id, file("${sample_id}.amr.alignment.dedup.sam") into (megares_dedup_resistome_sam)
+         set sample_id, file("${sample_id}.amr.alignment.dedup.bam") into (megares_dedup_resistome_bam)
+
+
+     """
+     bwa mem ${amr} ${forward} ${reverse} -t ${threads} -R '@RG\\tID:${sample_id}\\tSM:${sample_id}' > ${sample_id}.amr.alignment.sam
+     samtools view -S -b ${sample_id}.amr.alignment.sam > ${sample_id}.amr.alignment.bam
+     samtools sort -n ${sample_id}.amr.alignment.bam -o ${sample_id}.amr.alignment.sorted.bam
+     samtools fixmate ${sample_id}.amr.alignment.sorted.bam ${sample_id}.amr.alignment.sorted.fix.bam
+     samtools sort ${sample_id}.amr.alignment.sorted.fix.bam -o ${sample_id}.amr.alignment.sorted.fix.sorted.bam
+     samtools rmdup -S ${sample_id}.amr.alignment.sorted.fix.sorted.bam ${sample_id}.amr.alignment.dedup.bam
+     samtools view -h -o ${sample_id}.amr.alignment.dedup.sam ${sample_id}.amr.alignment.dedup.bam
+     rm ${sample_id}.amr.alignment.bam
+     rm ${sample_id}.amr.alignment.sorted*.bam
+     """
+}
+
+
+process ExtractSNP {
+     tag { sample_id }
+
+     publishDir "${params.output}/ExtractMegaresSNPs", mode: "copy",
+         saveAs: { filename ->
+             if(filename.indexOf(".snp.fasta") > 0) "SNP_fasta/$filename"
+             else if(filename.indexOf("gene.tsv") > 0) "Gene_hits/$filename"
+             else {}
+         }
+
+     input:
+         set sample_id, file(sam) from megares_dedup_resistome_sam
+         file annotation
+         file amr
+
+     output:
+         set sample_id, file("*.snp.fasta") into megares_snp_fasta
+         set sample_id, file("${sample_id}*.gene.tsv") into (resistome_hits)
+
+     """
+     awk -F "\\t" '{if (\$1!="@SQ" && \$1!="@RG" && \$1!="@PG" && \$1!="@HD" && \$3="RequiresSNPConfirmation" ) {print ">"\$1"\\n"\$10}}' ${sam} | tr -d '"'  > ${sample_id}.snp.fasta
+     resistome \
+      -ref_fp ${amr} \
+      -annot_fp ${annotation} \
+      -sam_fp ${sam} \
+      -gene_fp ${sample_id}.gene.tsv \
+      -group_fp ${sample_id}.group.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -mech_fp ${sample_id}.mechanism.tsv \
+      -t ${threshold}
+
+     """
+}
+
 
 process RunRGI {
      tag { sample_id }
@@ -76,16 +160,76 @@ process RunRGI {
      publishDir "${params.output}/RunRGI", mode: "copy"
 
      input:
-         set sample_id, file(forward) from reads
+         set sample_id, file(fasta) from megares_snp_fasta
 
      output:
-         set sample_id, file("${sample_id}_rgi_output*") into rgi_results
+         set sample_id, file("${sample_id}_rgi_output.txt") into rgi_results
 
      """
-     rgi main --input_sequence ${forward} --output_file ${sample_id}_rgi_output -a diamond
+     rgi main --input_sequence ${fasta} --output_file ${sample_id}_rgi_output -a diamond -n ${threads}
      """
 }
 
+
+process SNPconfirmation {
+     tag { sample_id }
+
+     publishDir "${params.output}/SNPConfirmation", mode: "copy",
+         saveAs: { filename ->
+             if(filename.indexOf("_rgi_perfect_hits.csv") > 0) "Perfect_RGI/$filename"
+             else if(filename.indexOf("_rgi_strict_hits.csv") > 0) "Strict_RGI/$filename"
+             else if(filename.indexOf("_rgi_loose_hits.csv") > 0) "Loose_RGI/$filename"
+             else {}
+         }
+
+     input:
+         set sample_id, file(rgi) from rgi_results
+
+     output:
+         set sample_id, file("${sample_id}_rgi_strict_hits.csv") into strict_snp_long_hits
+     """
+     python $baseDir/bin/RGI_aro_hits.py ${rgi} ${sample_id}
+     """
+}
+
+process Confirmed_AMR_hits {
+     tag { sample_id }
+
+     publishDir "${params.output}/SNP_confirmed_counts", mode: "copy"
+
+     input:
+         set sample_id, file(megares_counts) from resistome_hits
+         set sample_id, file(strict_rgi_counts) from strict_snp_long_hits
+
+     output:
+         file("${sample_id}*strict_SNP_confirmed_counts") into strict_confirmed_counts
+
+     """
+     python $baseDir/bin/RGI_long_combine.py ${strict_rgi_counts} ${megares_counts} ${sample_id}.strict_SNP_confirmed_counts ${sample_id}
+     """
+}
+
+
+strict_confirmed_counts.toSortedList().set { strict_confirmed_amr_l_to_w }
+
+
+process Confirmed_LongToWide {
+     tag {}
+
+     publishDir "${params.output}/Confirmed_AMRLongToWide", mode: "copy"
+
+     input:
+         file(strict_confirmed_resistomes) from strict_confirmed_amr_l_to_w
+
+     output:
+         file("strict_SNP_confirmed_AMR_analytic_matrix.csv") into strict_confirmed_matrix
+
+     """
+     mkdir ret
+     python3 $baseDir/bin/amr_long_to_wide.py -i ${strict_confirmed_resistomes} -o ret
+     mv ret/AMR_analytic_matrix.csv strict_SNP_confirmed_AMR_analytic_matrix.csv
+     """
+}
 
 
 
