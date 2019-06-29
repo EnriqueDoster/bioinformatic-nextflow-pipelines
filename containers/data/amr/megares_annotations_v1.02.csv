@@ -1366,7 +1366,7 @@ gi|15858853|gb|AY029068.1|betalactams|Class_A_betalactamases|CTX,betalactams,Cla
 Rif|Arr4|EF660562|1672-2124|453|Rifampin|Rifampin_ADP-ribosyltransferase_Arr|ARR,Rifampin,Rifampin ADP-ribosyltransferase Arr,ARR
 CARD|phgb|KM659858|401-1154|ARO:3003194|GIM-2|betalactams|Class_B_betalactamases|GIM,betalactams,Class B betalactamases,GIM
 Tmt|DfrA6|Z86002|336-809|474|Trimethoprim|Dihydrofolate_reductase|DHFR|RequiresSNPConfirmation,Trimethoprim,Dihydrofolate reductase,DHFR
-Sul|sul2_3_HQ340942|Sulfonamides|Sulfonamide-resistant_dihydropteroate_synthases|SULII,Sulfonamides,Sulfonamide-resistant dihydropteroate synthases,SULII
+Sul|sul2_3_HQ840942|Sulfonamides|Sulfonamide-resistant_dihydropteroate_synthases|SULII,Sulfonamides,Sulfonamide-resistant dihydropteroate synthases,SULII
 gi|1524020|emb|X92506.1|betalactams|Class_A_betalactamases|CTX,betalactams,Class A betalactamases,CTX
 Mdr|NC_002516.2.878882|Multi-drug_resistance|Multi-drug_efflux_pumps|MEXY,Multi-drug resistance,Multi-drug efflux pumps,MEXY
 503|FJ848785.1|FJ848785|Aminoglycosides|Aminoglycoside_N-acetyltransferases|AAC3,Aminoglycosides,Aminoglycoside N-acetyltransferases,AAC3
