@@ -19,6 +19,9 @@ nextflow main.nf --reads "PATH/to/files/*_R{1,2}_001.fastq.gz " --kraken_db $kra
 
 /s/angus/index/common/tools/nextflow run main_confirm_SNP_counts.nf --sams "/s/angus/index/common/tools/AlignToAMR/*_concatenated.amr.alignment.sam" --output /s/angus/index/common/tools/SNP_confirmation --threads 1 -w /s/angus/index/common/tools/work --host /s/angus/index/databases/bwa_indexes/mod_bos_taurus/mod_bos_taurus.fna -profile local -resume
 
+/s/angus/index/common/tools/nextflow run main_AMR_amrplusplus_snp.nf --reads "/media/AngusWorkspace/MEGmobile_test/test_run/*_{1,2}.fastq" --output /media/AngusWorkspace/Megmobile_test --threads 10 -w /media/AngusWorkspace/work_mobile --host /s/angus/index/databases/bwa_indexes/mod_bos_taurus/mod_bos_taurus.fna --amr /s/angus/index/databases/MEGMobile/MEGmobile_database_10Feb2019.fasta -profile local_angus -resume
+
+
 More Information
 ----------------
 
