@@ -193,7 +193,7 @@ process BAMToFASTQ {
         set sample_id, file(bam) from non_host_bam
 
     output:
-        set sample_id, file("${sample_id}.non.host.R1.fastq"), file("${sample_id}.non.host.R2.fastq") into (non_host_fastq, non_host_fastq_kraken)
+        set sample_id, file("${sample_id}.non.host.R1.fastq"), file("${sample_id}.non.host.R2.fastq") into (non_host_fastq_megares, non_host_fastq_dedup,non_host_fastq_kraken)
 
     """
     bedtools  \
@@ -203,6 +203,63 @@ process BAMToFASTQ {
       -fq2 ${sample_id}.non.host.R2.fastq
     """
 }
+
+/*
+-
+--
+---
+---- nonhost reads for megares and kraken2
+---
+--
+-
+*/
+
+
+/*
+---- Run Kraken2
+*/
+process RunKraken {
+    tag { sample_id }
+
+    publishDir "${params.output}/RunKraken", mode: "copy"
+
+    input:
+       set sample_id, file(forward), file(reverse) from non_host_fastq_kraken
+
+    output:
+       file("${sample_id}.kraken.filtered.report") into kraken_report
+
+    """
+    kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
+    kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.raw
+    """
+}
+
+kraken_report.toSortedList().set { kraken_l_to_w }
+
+process KrakenLongToWide {
+    tag { }
+
+    publishDir "${params.output}/KrakenLongToWide", mode: "copy"
+
+    input:
+        file(kraken_reports) from kraken_l_to_w
+
+    output:
+        file("kraken_analytic_matrix.csv") into kraken_master_matrix
+
+    """
+    mkdir ret
+    python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
+    mv ret/kraken_analytic_matrix.csv .
+    """
+}
+
+
+
+/*
+---- Run alignment to MEGAres
+*/
 
 if( !params.amr_index ) {
     process BuildAMRIndex {
@@ -226,15 +283,26 @@ process AlignToAMR {
      publishDir "${params.output}/AlignToAMR", mode: "copy"
 
      input:
-         set sample_id, file(forward), file(reverse) from non_host_fastq
+         set sample_id, file(forward), file(reverse) from non_host_fastq_megares
          file index from amr_index.first()
          file amr
 
      output:
-         set sample_id, file("${sample_id}.amr.alignment.sam") into (resistome_sam, rarefaction_sam, snp_sam)
+         set sample_id, file("${sample_id}.amr.alignment.sam") into (megares_resistome_sam, megares_rarefaction_sam, megares_snp_sam , megares_snpfinder_sam)
+         set sample_id, file("${sample_id}.amr.alignment.dedup.sam") into (megares_dedup_resistome_sam)
+         set sample_id, file("${sample_id}.amr.alignment.dedup.bam") into (megares_dedup_resistome_bam)
+
 
      """
-     bwa mem ${amr} ${forward} ${reverse} -t ${threads} > ${sample_id}.amr.alignment.sam
+     bwa mem ${amr} ${forward} ${reverse} -t ${threads} -R '@RG\\tID:${sample_id}\\tSM:${sample_id}' > ${sample_id}.amr.alignment.sam
+     samtools view -S -b ${sample_id}.amr.alignment.sam > ${sample_id}.amr.alignment.bam
+     samtools sort -n ${sample_id}.amr.alignment.bam -o ${sample_id}.amr.alignment.sorted.bam
+     samtools fixmate ${sample_id}.amr.alignment.sorted.bam ${sample_id}.amr.alignment.sorted.fix.bam
+     samtools sort ${sample_id}.amr.alignment.sorted.fix.bam -o ${sample_id}.amr.alignment.sorted.fix.sorted.bam
+     samtools rmdup -S ${sample_id}.amr.alignment.sorted.fix.sorted.bam ${sample_id}.amr.alignment.dedup.bam
+     samtools view -h -o ${sample_id}.amr.alignment.dedup.sam ${sample_id}.amr.alignment.dedup.bam
+     rm ${sample_id}.amr.alignment.bam
+     rm ${sample_id}.amr.alignment.sorted*.bam
      """
 }
 
@@ -244,16 +312,15 @@ process RunResistome {
     publishDir "${params.output}/RunResistome", mode: "copy"
 
     input:
-        set sample_id, file(sam) from resistome_sam
+        set sample_id, file(sam) from megares_resistome_sam
         file annotation
         file amr
 
     output:
-        file("${sample_id}.gene.tsv") into (resistome)
+        file("${sample_id}.gene.tsv") into (megares_resistome_counts, SNP_confirm_long)
 
     """
-    resistome \
-      -ref_fp ${amr} \
+    resistome -ref_fp ${amr} \
       -annot_fp ${annotation} \
       -sam_fp ${sam} \
       -gene_fp ${sample_id}.gene.tsv \
@@ -264,13 +331,80 @@ process RunResistome {
     """
 }
 
+megares_resistome_counts.toSortedList().set { megares_amr_l_to_w }
+
+process AMRLongToWide {
+    tag { }
+
+    publishDir "${params.output}/AMRLongToWide", mode: "copy"
+
+    input:
+        file(resistomes) from megares_amr_l_to_w
+
+    output:
+        file("AMR_analytic_matrix.csv") into amr_master_matrix
+
+    """
+    mkdir ret
+    python3 $baseDir/bin/amr_long_to_wide.py -i ${resistomes} -o ret
+    mv ret/AMR_analytic_matrix.csv .
+    """
+}
+
+
+/* samtools deduplication of megares alignment */
+process SamDedupRunResistome {
+    tag { sample_id }
+
+    publishDir "${params.output}/SamDedupRunResistome", mode: "copy"
+
+    input:
+        set sample_id, file(sam) from megares_dedup_resistome_sam
+        file annotation
+        file amr
+
+    output:
+        file("${sample_id}.gene.tsv") into (megares_dedup_resistome_counts)
+
+    """
+    resistome -ref_fp ${amr} \
+      -annot_fp ${annotation} \
+      -sam_fp ${sam} \
+      -gene_fp ${sample_id}.gene.tsv \
+      -group_fp ${sample_id}.group.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -mech_fp ${sample_id}.mechanism.tsv \
+      -t ${threshold}
+    """
+}
+
+megares_dedup_resistome_counts.toSortedList().set { megares_dedup_amr_l_to_w }
+
+process SamDedupAMRLongToWide {
+    tag { }
+
+    publishDir "${params.output}/SamDedup_AMRLongToWide", mode: "copy"
+
+    input:
+        file(resistomes) from megares_dedup_amr_l_to_w
+
+    output:
+        file("SamDedup_AMR_analytic_matrix.csv") into megares_dedup_amr_master_matrix
+
+    """
+    mkdir ret
+    python3 $baseDir/bin/amr_long_to_wide.py -i ${resistomes} -o ret
+    mv ret/AMR_analytic_matrix.csv SamDedup_AMR_analytic_matrix.csv
+    """
+}
+
 process RunRarefaction {
     tag { sample_id }
 
     publishDir "${params.output}/RunRarefaction", mode: "copy"
 
     input:
-        set sample_id, file(sam) from rarefaction_sam
+        set sample_id, file(sam) from megares_rarefaction_sam
         file annotation
         file amr
 
@@ -294,13 +428,39 @@ process RunRarefaction {
     """
 }
 
+
+/*
+---- SNP analysis
+*/
+
+process RunFreebayes {
+    tag { sample_id }
+
+    publishDir "${params.output}/RunFreebayes", mode: "copy"
+
+    input:
+        set sample_id, file(bam) from megares_dedup_resistome_bam
+        file annotation
+        file amr
+
+    output:
+        set sample_id, file("${sample_id}.results.vcf") into (SNP)
+
+    """
+    freebayes \
+      -f ${amr} \
+      -p 1 \
+      ${bam} > ${sample_id}.results.vcf
+    """
+}
+
 process RunSNPFinder {
     tag { sample_id }
 
     publishDir "${params.output}/RunSNPFinder", mode: "copy"
 
     input:
-        set sample_id, file(sam) from snp_sam
+        set sample_id, file(sam) from megares_snpfinder_sam
         file amr
 
     output:
@@ -314,63 +474,10 @@ process RunSNPFinder {
     """
 }
 
-process RunKraken {
-    tag { sample_id }
 
-    publishDir "${params.output}/RunKraken", mode: "copy"
 
-    input:
-       set sample_id, file(forward), file(reverse) from non_host_fastq_kraken
 
-    output:
-       file("${sample_id}.kraken.filtered.report") into
-       kraken_report
 
-    """
-    kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
-    kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.raw
-    """
-}
-
-resistome.toSortedList().set { amr_l_to_w }
-
-process AMRLongToWide {
-    tag { }
-
-    publishDir "${params.output}/AMRLongToWide", mode: "copy"
-
-    input:
-        file(resistomes) from amr_l_to_w
-
-    output:
-        file("AMR_analytic_matrix.csv") into amr_master_matrix
-
-    """
-    mkdir ret
-    python3 $baseDir/bin/amr_long_to_wide.py -i ${resistomes} -o ret
-    mv ret/AMR_analytic_matrix.csv .
-    """
-}
-
-kraken_report.toSortedList().set { kraken_l_to_w }
-
-process KrakenLongToWide {
-    tag { }
-
-    publishDir "${params.output}/KrakenLongToWide", mode: "copy"
-
-    input:
-        file(kraken_reports) from kraken_l_to_w
-
-    output:
-        file("kraken_analytic_matrix.csv") into kraken_master_matrix
-
-    """
-    mkdir ret
-    python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
-    mv ret/kraken_analytic_matrix.csv .
-    """
-}
 
 def nextflow_version_error() {
     println ""
