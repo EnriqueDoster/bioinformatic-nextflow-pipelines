@@ -226,10 +226,10 @@ if( !params.amr_index ) {
     }
 }
 
-process BAMToFASTQ {
+process NonHostReads {
     tag { sample_id }
 
-    publishDir "${params.output}/BAMToFASTQ", mode: "copy"
+    publishDir "${params.output}/NonHostReads", mode: "copy"
 
     input:
         set sample_id, file(bam) from non_host_bam
@@ -606,7 +606,7 @@ process DedupReads {
         set sample_id, file("${sample_id}.dd.R1.fastq"), file("${sample_id}.dd.R2.fastq") into (dedup_reads,dedup_reads_megares)
 
     """
-    ${CLUMPIFY} in1=${forward} in2=${reverse} out1=${sample_id}.dd.R1.fastq out2=${sample_id}.dd.R2.fastq dedupe=t addcount=t deletetemp=t minid=1.0
+    ${JAVA} ${CLUMPIFY} in1=${forward} in2=${reverse} out1=${sample_id}.dd.R1.fastq out2=${sample_id}.dd.R2.fastq dedupe=t addcount=t deletetemp=t minid=1.0
     """
 }
 
@@ -853,4 +853,3 @@ def help() {
     println ""
     return 1
 }
-

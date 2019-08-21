@@ -184,10 +184,10 @@ process HostRemovalStats {
     """
 }
 
-process BAMToFASTQ {
+process NonHostReads {
     tag { sample_id }
 
-    publishDir "${params.output}/BAMToFASTQ", mode: "copy"
+    publishDir "${params.output}/NonHostReads", mode: "copy"
 
     input:
         set sample_id, file(bam) from non_host_bam
@@ -334,10 +334,10 @@ process RunKraken {
 
 resistome.toSortedList().set { amr_l_to_w }
 
-process AMRLongToWide {
+process ResistomeResults {
     tag { }
 
-    publishDir "${params.output}/AMRLongToWide", mode: "copy"
+    publishDir "${params.output}/ResistomeResults", mode: "copy"
 
     input:
         file(resistomes) from amr_l_to_w
@@ -354,10 +354,10 @@ process AMRLongToWide {
 
 kraken_report.toSortedList().set { kraken_l_to_w }
 
-process KrakenLongToWide {
+process KrakenResults {
     tag { }
 
-    publishDir "${params.output}/KrakenLongToWide", mode: "copy"
+    publishDir "${params.output}/KrakenResults", mode: "copy"
 
     input:
         file(kraken_reports) from kraken_l_to_w

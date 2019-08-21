@@ -28,8 +28,14 @@ if( params.annotation ) {
     annotation = file(params.annotation)
     if( !annotation.exists() ) return annotation_error(annotation)
 }
+if(params.kraken_db) {
+    kraken_db = file(params.kraken_db)
+}
 
-kraken_db = params.kraken_db
+/*
+ftp://ftp.ccb.jhu.edu/pub/data/kraken2_dbs/minikraken2_v2_8GB_201904_UPDATE.tgz
+*/
+
 threads = params.threads
 
 threshold = params.threshold
@@ -184,10 +190,10 @@ process HostRemovalStats {
     """
 }
 
-process BAMToFASTQ {
+process NonHostReads {
     tag { sample_id }
 
-    publishDir "${params.output}/BAMToFASTQ", mode: "copy"
+    publishDir "${params.output}/NonHostReads", mode: "copy"
 
     input:
         set sample_id, file(bam) from non_host_bam
@@ -218,29 +224,73 @@ process BAMToFASTQ {
 /*
 ---- Run Kraken2
 */
+
+
+if( !params.kraken_db ) {
+  if( !mini_kraken_db ) {
+    process DownloadMinikraken {
+        publishDir "$baseDir/minikraken_db", mode: "copy"
+
+        tag { kraken_db.baseName }
+
+
+        input:
+
+        output:
+            file 'minikraken2_v2_8GB_201904_UPDATE/*' into (mini_kraken_db)
+
+        """
+        wget ftp://ftp.ccb.jhu.edu/pub/data/kraken2_dbs/minikraken2_v2_8GB_201904_UPDATE.tgz
+        unzip minikraken2_v2_8GB_201904_UPDATE.tgz
+        """
+    }
+  }
+}
+
+
 process RunKraken {
     tag { sample_id }
 
-    publishDir "${params.output}/RunKraken", mode: "copy"
+    publishDir "${params.output}/RunKraken", mode: 'copy',
+        saveAs: { filename ->
+            if(filename.indexOf(".kraken.raw") > 0) "Standard/$filename"
+            else if(filename.indexOf(".kraken.report") > 0) "Standard_report/$filename"
+            else if(filename.indexOf(".kraken.filtered.report") > 0) "Filtered_report/$filename"
+            else if(filename.indexOf(".kraken.filtered.raw") > 0) "Filtered/$filename"
+            else {}
+        }
 
     input:
        set sample_id, file(forward), file(reverse) from non_host_fastq_kraken
 
-    output:
-       file("${sample_id}.kraken.filtered.report") into kraken_report
+   output:
+      file("${sample_id}.kraken.report") into (kraken_report,kraken_extract_taxa)
+      set sample_id, file("${sample_id}.kraken.raw") into kraken_raw
+      file("${sample_id}.kraken.filtered.report") into kraken_filter_report
+      file("${sample_id}.kraken.filtered.raw") into kraken_filter_raw
 
-    """
-    kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
-    kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.raw
-    """
+   script:
+   if ( mini_kraken_db)
+     """
+     kraken2 --preload --db ${mini_kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
+     kraken2 --preload --db ${mini_kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.filtered.raw
+     """
+   else if ( kraken_db)
+     """
+     kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
+     kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.filtered.raw
+     """
+   else
+    error "Invalid kraken database: ${kraken_db}. Or failed to download minikraken db: ${mini_kraken_db}"
 }
 
 kraken_report.toSortedList().set { kraken_l_to_w }
+kraken_filter_report.toSortedList().set { kraken_filter_l_to_w }
 
-process KrakenLongToWide {
+process KrakenResults {
     tag { }
 
-    publishDir "${params.output}/KrakenLongToWide", mode: "copy"
+    publishDir "${params.output}/KrakenResults", mode: "copy"
 
     input:
         file(kraken_reports) from kraken_l_to_w
@@ -252,6 +302,24 @@ process KrakenLongToWide {
     mkdir ret
     python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
     mv ret/kraken_analytic_matrix.csv .
+    """
+}
+
+process FilteredKrakenResults {
+    tag { sample_id }
+
+    publishDir "${params.output}/FilteredKrakenResults", mode: "copy"
+
+    input:
+        file(kraken_reports) from kraken_filter_l_to_w
+
+    output:
+        file("filtered_kraken_analytic_matrix.csv") into filter_kraken_master_matrix
+
+    """
+    mkdir ret
+    python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
+    mv ret/kraken_analytic_matrix.csv filtered_kraken_analytic_matrix.csv
     """
 }
 
@@ -333,10 +401,10 @@ process RunResistome {
 
 megares_resistome_counts.toSortedList().set { megares_amr_l_to_w }
 
-process AMRLongToWide {
+process ResistomeResults {
     tag { }
 
-    publishDir "${params.output}/AMRLongToWide", mode: "copy"
+    publishDir "${params.output}/ResistomeResults", mode: "copy"
 
     input:
         file(resistomes) from megares_amr_l_to_w
@@ -380,10 +448,10 @@ process SamDedupRunResistome {
 
 megares_dedup_resistome_counts.toSortedList().set { megares_dedup_amr_l_to_w }
 
-process SamDedupAMRLongToWide {
+process SamDedupResistomeResults {
     tag { }
 
-    publishDir "${params.output}/SamDedup_AMRLongToWide", mode: "copy"
+    publishDir "${params.output}/SamDedup_ResistomeResults", mode: "copy"
 
     input:
         file(resistomes) from megares_dedup_amr_l_to_w
@@ -573,7 +641,7 @@ strict_confirmed_counts.toSortedList().set { strict_confirmed_amr_l_to_w }
 process Confirmed_LongToWide {
      tag {}
 
-     publishDir "${params.output}/Confirmed_AMRLongToWide", mode: "copy"
+     publishDir "${params.output}/Confirmed_ResistomeResults", mode: "copy"
 
      input:
          file(strict_confirmed_resistomes) from strict_confirmed_amr_l_to_w
@@ -688,7 +756,7 @@ dedup_strict_confirmed_counts.toSortedList().set { dedup_strict_confirmed_amr_l_
 process DedupSNPConfirmedLongToWide {
      tag {}
 
-     publishDir "${params.output}/Confirmed_AMRLongToWide", mode: "copy"
+     publishDir "${params.output}/Confirmed_ResistomeResults", mode: "copy"
 
      input:
          file(strict_confirmed_resistomes) from dedup_strict_confirmed_amr_l_to_w
