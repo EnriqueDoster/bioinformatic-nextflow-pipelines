@@ -1,7 +1,7 @@
 Bootstrap: docker
 From: debian:jessie-slim
 
-#Includes idba, trimmomatic, samtools, bwa, bedtools, freebayes, bbmap, resistomeanalyzer, rarefactionanalyzer
+#Includes idba, trimmomatic, samtools, bwa, bedtools, freebayes, bbmap, vcftools, htslib, ncurses, kraken2, resistomeanalyzer, rarefactionanalyzer
 
 %post
     ## Jave install doesn't work, but can load java module from summit
