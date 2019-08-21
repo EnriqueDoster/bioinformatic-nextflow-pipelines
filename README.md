@@ -12,13 +12,14 @@ Additionally, you may want to know if the depth of your sequencing (how many rea
 
 With AmrPlusPlus, you will obtain count files for each sample that can be combined into a count matrix and analyzed using any statistical and mathematical techniques that can operate on a matrix of observations.
 
+
 More Information
 ----------------
 
-- [Software Requirements](https://github.com/cdeanj/amrplusplus/blob/master/docs/requirements.md)
-- [Installation](https://github.com/cdeanj/amrplusplus/blob/master/docs/installation.md)
-- [Usage](https://github.com/cdeanj/amrplusplus/blob/master/docs/usage.md)
-- [Configuration](https://github.com/cdeanj/amrplusplus/blob/master/docs/configuration.md)
-- [Output](https://github.com/cdeanj/amrplusplus/blob/master/docs/output.md)
-- [Dependencies](https://github.com/cdeanj/amrplusplus/blob/master/docs/dependencies.md)
-- [Contact](https://github.com/cdeanj/amrplusplus/blob/master/docs/contact.md)
+- [Software Requirements](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/requirements.md)
+- [Installation](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/installation.md)
+- [Usage](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/usage.md)
+- [Configuration](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/configuration.md)
+- [Output](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/output.md)
+- [Dependencies](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/dependencies.md)
+- [Contact](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/contact.md)
