@@ -28,10 +28,13 @@ if( params.annotation ) {
     annotation = file(params.annotation)
     if( !annotation.exists() ) return annotation_error(annotation)
 }
-
 if(params.kraken_db) {
     kraken_db = file(params.kraken_db)
 }
+if(params.ftp_minikraken) {
+    ftp_minikraken = file(params.ftp_minikraken)
+}
+
 
 threads = params.threads
 
@@ -223,24 +226,20 @@ process NonHostReads {
 */
 
 if( !params.kraken_db ) {
-  if( !mini_kraken_db ) {
     process DownloadMinikraken {
         publishDir "$baseDir/minikraken_db", mode: "copy"
-
-        tag { kraken_db.baseName }
 
 
         input:
 
         output:
-            file 'minikraken2_v2_8GB_201904_UPDATE/*' into (mini_kraken_db)
+            file '*/*' into (mini_kraken_db)
 
         """
-        wget ftp://ftp.ccb.jhu.edu/pub/data/kraken2_dbs/minikraken2_v2_8GB_201904_UPDATE.tgz
+        wget ${ftp_minikraken}
         unzip minikraken2_v2_8GB_201904_UPDATE.tgz
         """
     }
-  }
 }
 
 
