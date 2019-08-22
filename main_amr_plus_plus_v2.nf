@@ -31,9 +31,6 @@ if( params.annotation ) {
 if(params.kraken_db) {
     kraken_db = file(params.kraken_db)
 }
-if(params.ftp_minikraken) {
-    ftp_minikraken = file(params.ftp_minikraken)
-}
 
 
 threads = params.threads
@@ -136,7 +133,7 @@ process AlignReadsToHost {
 
     input:
         set sample_id, file(forward), file(reverse) from paired_fastq
-        file index from host_index.first()
+        file index from host_index
         file host
 
     output:
@@ -225,22 +222,6 @@ process NonHostReads {
 ---- Run Kraken2
 */
 
-if( !params.kraken_db ) {
-    process DownloadMinikraken {
-        publishDir "$baseDir/minikraken_db", mode: "copy"
-
-
-        input:
-
-        output:
-            file '*/*' into (mini_kraken_db)
-
-        """
-        wget ${ftp_minikraken}
-        unzip minikraken2_v2_8GB_201904_UPDATE.tgz
-        """
-    }
-}
 
 
 process RunKraken {
@@ -258,28 +239,19 @@ process RunKraken {
     input:
        set sample_id, file(forward), file(reverse) from non_host_fastq_kraken
 
+
    output:
       file("${sample_id}.kraken.report") into (kraken_report,kraken_extract_taxa)
       set sample_id, file("${sample_id}.kraken.raw") into kraken_raw
       file("${sample_id}.kraken.filtered.report") into kraken_filter_report
       file("${sample_id}.kraken.filtered.raw") into kraken_filter_raw
 
-   script:
-   if ( mini_kraken_db)
-     """
-     kraken2 --preload --db ${mini_kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
-     kraken2 --preload --db ${mini_kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.filtered.raw
-     """
-   else if ( kraken_db)
+
      """
      kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
      kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.filtered.raw
      """
-   else
-    error "Invalid kraken database: ${kraken_db}. Or failed to download minikraken db: ${mini_kraken_db}"
 }
-
-
 
 
 kraken_report.toSortedList().set { kraken_l_to_w }
@@ -348,7 +320,7 @@ process AlignToAMR {
 
      input:
          set sample_id, file(forward), file(reverse) from non_host_fastq_megares
-         file index from amr_index.first()
+         file index from amr_index
          file amr
 
      output:
@@ -537,6 +509,7 @@ process RunSNPFinder {
       -out_fp ${sample_id}.tsv
     """
 }
+
 
 
 
