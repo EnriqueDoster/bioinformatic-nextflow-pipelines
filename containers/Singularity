@@ -4,18 +4,14 @@ From: debian:jessie-slim
 #Includes idba, trimmomatic, samtools, bwa, bedtools, freebayes, bbmap, vcftools, htslib, ncurses, kraken2, resistomeanalyzer, rarefactionanalyzer, SNPfinder
 
 %environment
-    echo 'export PATH=/usr/local/bin/anaconda/bin:${PATH}' >> $SINGULARITY_ENVIRONMENT
-    export PATH=/usr/local/envs/compute/bin/:${PATH}
+    export PATH=/usr/local/envs/AmrPlusPlus/bin/:${PATH}
 
-%files
-    #environment.yml /
-    
 %post
     ## Jave install doesn't work, but can load java module from summit
     apt update \
     && apt install -y --no-install-recommends \
     build-essential ca-certificates sudo tcsh\
-    git make automake autoconf openjdk-7-jre wget unzip sed \
+    git make automake autoconf openjdk-7-jre wget gzip unzip sed\
     zlib1g-dev curl libbz2-dev locales libncurses5-dev liblzma-dev libcurl4-openssl-dev software-properties-common apt-transport-https\
     python3-pip python3-docopt python3-pytest python-dev python3-dev\
     libcurl4-openssl-dev libssl-dev zlib1g-dev fonts-texgyre \
@@ -31,16 +27,12 @@ From: debian:jessie-slim
     conda config --add channels defaults
     conda config --add channels conda-forge
     conda config --add channels bioconda
-    
-    # install bulk of bioinformatic tools using conda 
-    conda create -n compute python=3 rgi idba trimmomatic bwa samtools bedtools freebayes bbmap vcftools htslib ncurses kraken2
 
-    # make /data and /scripts so we can mount it to access external resources
-    #if [ ! -d /data ]; then mkdir /data; fi
-    #if [ ! -d /scripts ]; then mkdir /scripts; fi
-    
-    . /usr/local/bin/activate compute
-        
+    # install bulk of bioinformatic tools using conda
+    conda create -n AmrPlusPlus python=3 rgi idba trimmomatic bwa samtools bedtools freebayes bbmap vcftools htslib ncurses kraken2
+
+    . /usr/local/bin/activate AmrPlusPlus
+
     # resistomeanalyzer
     cd /usr/local
     git clone https://github.com/cdeanj/resistomeanalyzer.git
@@ -57,19 +49,19 @@ From: debian:jessie-slim
     make
     cp rarefaction /usr/local/bin
     cd /
- 
+
     # SNPfinder
     cd /usr/local
     git clone https://github.com/cdeanj/snpfinder.git
     cd snpfinder
     make
     cp snpfinder /usr/local/bin
-    cd /    
+    cd /
 
-    # Make sure all the tools have the right permissions to use the tools    
+    # Make sure all the tools have the right permissions to use the tools
     chmod -R 777 /usr/local/
 
-    
+
 %test
     #which bwa
     #which bedtools

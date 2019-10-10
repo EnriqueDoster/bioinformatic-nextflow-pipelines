@@ -93,17 +93,13 @@ process RunQC {
     ${JAVA} -jar ${TRIMMOMATIC} \
       PE \
       -threads ${threads} \
-      $forward $reverse -baseout ${sample_id} \
+      $forward $reverse ${sample_id}.1P.fastq.gz ${sample_id}.1U.fastq.gz ${sample_id}.2P.fastq.gz ${sample_id}.2U.fastq.gz \
       ILLUMINACLIP:${adapters}:2:30:10:3:TRUE \
       LEADING:${leading} \
       TRAILING:${trailing} \
       SLIDINGWINDOW:${slidingwindow} \
       MINLEN:${minlen} \
       2> ${sample_id}.trimmomatic.stats.log
-    mv ${sample_id}_1P ${sample_id}.1P.fastq
-    mv ${sample_id}_2P ${sample_id}.2P.fastq
-    mv ${sample_id}_1U ${sample_id}.1U.fastq
-    mv ${sample_id}_2U ${sample_id}.2U.fastq
     """
 }
 
@@ -314,10 +310,10 @@ process RunResistome {
 
 megares_resistome_counts.toSortedList().set { megares_amr_l_to_w }
 
-process AMRLongToWide {
+process ResistomeResults {
     tag { }
 
-    publishDir "${params.output}/AMRLongToWide", mode: "copy"
+    publishDir "${params.output}/ResistomeResults", mode: "copy"
 
     input:
         file(resistomes) from megares_amr_l_to_w
@@ -326,9 +322,7 @@ process AMRLongToWide {
         file("AMR_analytic_matrix.csv") into amr_master_matrix
 
     """
-    mkdir ret
-    python3 $baseDir/bin/amr_long_to_wide.py -i ${resistomes} -o ret
-    mv ret/AMR_analytic_matrix.csv .
+    ${PYTHON3} $baseDir/bin/amr_long_to_wide.py -i ${resistomes} -o AMR_analytic_matrix.csv
     """
 }
 
