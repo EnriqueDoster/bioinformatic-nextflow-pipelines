@@ -28,7 +28,7 @@ From: debian:jessie-slim
     conda config --add channels bioconda
 
     # install bulk of bioinformatic tools using conda
-    conda create -n AmrPlusPlus python=3 rgi idba trimmomatic bwa samtools bedtools freebayes bbmap vcftools htslib ncurses kraken2
+    conda create -n AmrPlusPlus python=3 rgi idba trimmomatic bwa blat samtools bedtools freebayes bbmap vcftools htslib ncurses kraken2
 
     . /usr/local/bin/activate AmrPlusPlus
     
