@@ -128,7 +128,7 @@ def assembly_stats(contigsMultifasta, sample_id, mini, est_genome_size, average_
     
     out = open(sample_id + '_assembly_stats.txt', 'w')
     out.write(str(sample_id) + ',num_contigs,' + str(len(contigsLength)) + '\n')
-    out.write(str(sample_id) + 'num_of_contigs_longer_than' + str(average_gene_size) + 'bp,' + str(Xkb) + '\n')
+    out.write(str(sample_id) + ',num_of_contigs_longer_than' + str(average_gene_size) + 'bp,' + str(Xkb) + '\n')
     out.write(str(sample_id) + ',total_bp_length,' + str(total) + '\n')
     #out.write(str(sample_id) + '# trimmed contigs: ' + str(len(trimmedLength)) + '\n')
     #out.write(str(sample_id) + 'trimmed length [bp]: ' + str(sum) + '\n')
