@@ -27,44 +27,22 @@ From: debian:jessie-slim
     conda config --add channels conda-forge
     conda config --add channels bioconda
 
-    # install bulk of bioinformatic tools using conda
-    conda create -n AmrPlusPlus_env python=3 biopython rgi idba trimmomatic bwa blat samtools bedtools freebayes bbmap vcftools htslib ncurses kraken2
+    #Download file for qiime2 installation
+    wget https://data.qiime2.org/distro/core/qiime2-2019.7-py36-linux-conda.yml
+    conda env create -n AmrPlusPlus_qiime2_env --file qiime2-2019.7-py36-linux-conda.yml
 
-    . /usr/local/bin/activate AmrPlusPlus_env
+    . /usr/local/bin/activate AmrPlusPlus_qiime2_env
+
+    # install bulk of bioinformatic tools using conda
+    conda install biopython picrust
     
-    #ln -s /usr/local/envs/AmrPlusPlus_env/bin/* /usr/local/bin/
+    # Run additional command for picrust
+    download_picrust_files.py
+    
+    #ln -s /usr/local/envs/AmrPlusPlus_qiime2_env/bin/* /usr/local/bin/
     
     #Still experimenting with how to change $PATH location. 
-    echo 'export PATH=$PATH:/usr/local/envs/AmrPlusPlus_env/bin/' >> $SINGULARITY_ENVIRONMENT
-
-    # resistomeanalyzer
-    cd /usr/local
-    git clone https://github.com/cdeanj/resistomeanalyzer.git
-    cd resistomeanalyzer
-    make
-    cp resistome /usr/local/bin
-    #ln -s /usr/local/resistomeanalyzer/* /usr/local/bin/
-    cd /
-
-    # RarefactionAnalyzer
-    cd /usr/local
-    git clone https://github.com/cdeanj/RarefactionAnalyzer.git
-    cd RarefactionAnalyzer
-    make
-    cp rarefaction /usr/local/bin
-    cd /
-
-    # SNPfinder
-    cd /usr/local
-    git clone https://github.com/cdeanj/snpfinder.git
-    cd snpfinder
-    make
-    cp snpfinder /usr/local/bin
-    cd /
-
-    # Make sure all the tools have the right permissions to use the tools
-    chmod -R 777 /usr/local/
-
+    echo 'export PATH=$PATH:/usr/local/envs/AmrPlusPlus_qiime2_env/bin/' >> $SINGULARITY_ENVIRONMENT
 
 %test
     #which bwa
