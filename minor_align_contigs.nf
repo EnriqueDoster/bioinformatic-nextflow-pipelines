@@ -121,7 +121,8 @@ process CombineResults {
 
      """
      cat ${assembly_stats_list} > long_contig_assembly_stats.txt
-     cat ${gene_alignments_list} > long_multiple_gene_alignments.csv
+     echo "Sample,contig,contig_start_coord,contig_end_coord,gene_header,gene_start_coord,gene_end_coord,alignment_length\n" > long_multiple_gene_alignments.csv 
+     cat ${gene_alignments_list} >> long_multiple_gene_alignments.csv
      cat ${stats_alignments_list} > long_gene_alignment_stats.csv
      """
 }
