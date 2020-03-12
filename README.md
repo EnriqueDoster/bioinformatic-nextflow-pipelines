@@ -23,3 +23,13 @@ More Information
 - [Output](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/output.md)
 - [Dependencies](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/dependencies.md)
 - [Contact](https://github.com/EnriqueDoster/bioinformatic-nextflow-pipelines/blob/master/docs/contact.md)
+
+Description of scripts
+----------------
+
+main_qiime2.nf
+```
+nextflow run main_qiime2.nf --reads "/s/angus/index/projs/mega_tylan/concat_16S_LN/raw_data/*_{1,2}.fq" --output XIT_LN_qiime2 -profile local --metadata /media/AngusWorkspace/run_Jake/LN_metadata.tsv --classifier /media/AngusWorkspace/run_Jake/bioinformatic-nextflow-pipelines/gg-13-8-99-515-806-nb-classifier.qza -resume --threads 25
+```
+
+
