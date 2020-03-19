@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
 
 /*
-qiime dada2 denoise-paired --i-demultiplexed-seqs /s/angus/index/projs/projects_3_4/analysis/Qiime2/Proj_3_4_CB/Proj_3_4_CB-paired-end.qza --o-table /s/angus/index/projs/projects_3_4/analysis/Qiime2/Proj_3_4_CB/Proj_3_4_CB-dada-table.qza --o-representative-sequences /s/angus/index/projs/projects_3_4/analysis/Qiime2/Proj_3_4_CB/Proj_3_4_CB-rep-seqs.qza --p-trim-left-f 5 --p-trim-left-r 5 --p-trunc-len-f 240 --p-trunc-len-r 240 --p-n-threads 8 --verbose
-
-/s/angus/index/common/tools/nextflow run main_qiime2.nf --reads "/s/angus/index/projs/projects_3_4/raw_sequence_data/16S_raw_combined/*_{1,2}.fq.gz" --metadata "/media/AngusWorkspace/proj3_16S/Proj_3_metadata_full.tsv" -profile local_angus
+# Example for Angus server
+# Reminder to first activate qiime2 anaconda environment
+/s/angus/index/common/tools/nextflow run main_qiime2.nf --reads "/s/angus/index/projs/projects_3_4/raw_sequence_data/16S_raw_combined/*_{1,2}.fq.gz" --classifier /media/AngusWorkspace/run_Jake/bioinformatic-nextflow-pipelines/gg-13-8-99-515-806-nb-classifier.qza --threads 10 -profile local_angus
 
 */
 
