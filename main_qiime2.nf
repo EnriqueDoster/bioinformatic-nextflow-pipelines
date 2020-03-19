@@ -78,7 +78,7 @@ reads
 process Qiime2InitialProcessing {
     tag { sample_id }
 
-    publishDir "${params.output}/Qiime2_initial_processing", mode: "copy"
+    publishDir "${params.output}/Qiime2_results", mode: "copy"
 
 
     input:
@@ -86,6 +86,7 @@ process Qiime2InitialProcessing {
 
     output:
         file("Qiime2_results/*") into (all_results)
+        file("dada_results/*") into (dada_results)
 
     """
     qiime tools import \
