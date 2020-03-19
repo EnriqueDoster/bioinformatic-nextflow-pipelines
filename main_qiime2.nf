@@ -56,32 +56,8 @@ slidingwindow = params.slidingwindow
 minlen = params.minlen
 
 metadata = params.metadata
+classifier = params.classifier
 
-
-/*
-qiime picrust2 full-pipeline \
-   --i-table Proj_3_4_CB-dada-table-filtered.qza \
-   --i-seq Proj_3_4_CB-rep-seqs.qza \
-   --output-dir projs_3_4_CB-picrust2_output \
-   --p-threads 1 \
-   --p-hsp-method pic \
-   --p-max-nsti 2 \
-   --verbose
-
-
-   qiime feature-table tabulate-seqs --i-data Proj_3_4_CB-rep-seqs.qza --o-visualization Proj_3_4_CB-rep-seqs.qzv
-   qiime feature-classifier classify-sklearn --i-classifier gg-13-8-99-nb-classifier.qza --i-reads Proj_3_4_CB-rep-seqs.qza --o-classification Proj_3_4_CB-taxonomy.qza
-   qiime taxa filter-table --i-table Proj_3_4_CB-dada-table.qza --i-taxonomy Proj_3_4_CB-taxonomy.qza --p-exclude mitochondria,chloroplast --o-filtered-table Proj_3_4_CB-dada-table-filtered.qza
-   qiime metadata tabulate --m-input-file Proj_3_4_CB-taxonomy.qza --o-visualization Proj_3_4_CB-taxonomy.qzv
-   qiime feature-table summarize --i-table Proj_3_4_CB-dada-table-filtered.qza --m-sample-metadata-file Proj_3_4_CB_metadata_full.tsv --o-visualization Proj_3_4_CB-dada-table-filtered.qzv
-   qiime taxa barplot --i-table Proj_3_4_CB-dada-table-filtered.qza --i-taxonomy Proj_3_4_CB-taxonomy.qza --m-metadata-file Proj_3_4_CB_metadata_full.tsv --o-visualization Proj_3_4_CB-taxonomy-filtered.qzv
-   qiime alignment mafft --i-sequences Proj_3_4_CB-rep-seqs.qza --o-alignment Proj_3_4_CB-aligned.qza
-   qiime alignment mask --i-alignment Proj_3_4_CB-aligned.qza --o-masked-alignment Proj_3_4_CB-aligned-masked.qza
-   qiime phylogeny fasttree --i-alignment Proj_3_4_CB-aligned-masked.qza --o-tree Proj_3_4_CB-aligned-masked-unrooted.qza
-   qiime phylogeny midpoint-root --i-tree Proj_3_4_CB-aligned-masked-unrooted.qza --o-rooted-tree Proj_3_4_CB-aligned-masked-rooted.qza
-
-
-*/
 
 
 Channel
@@ -98,16 +74,6 @@ reads
     .collectFile(name: 'manifest.txt', newLine: true, storeDir: "${params.output}/demux", seed: "sample-id,absolute-filepath,direction")
     .set { ch_manifest }
 
-/* This section mostly works, but the header for the manifest still contains the "\t" characters
-reads
-    .map { name, forward, reverse -> [ forward.drop(forward.findLastIndexOf{"/"})[0], forward, reverse ] } //extract file name
-    .map { name, forward, reverse -> [ name.toString().take(name.toString().indexOf("_")), forward, reverse ] } //extract sample name
-    .map { name, forward, reverse -> [ name +"\t"+ forward + "\t"+ reverse] } //prepare basic synthax
-    .flatten()
-    .collectFile(name: 'manifest.txt', newLine: true, storeDir: "${params.output}/demux", seed: "sample-id\tforward-absolute-filepath\treverse-absolute-filepath\n")
-    .set { ch_manifest }
-*/
-
 
 process Qiime2InitialProcessing {
     tag { sample_id }
@@ -116,10 +82,10 @@ process Qiime2InitialProcessing {
 
 
     input:
-        file(manifest) file(reverse) from ch_manifest
+        file(manifest) from ch_manifest
 
     output:
-        file("demux.qza") into (ch_qiime2_raw)
+        file("Qiime2_results/*") into (all_results)
 
     """
     qiime tools import \
@@ -130,17 +96,72 @@ process Qiime2InitialProcessing {
 
     qiime dada2 denoise-paired --i-demultiplexed-seqs demux.qza \
      --o-table dada-table.qza \
-     --o-representative-sequences rep-seqs.qza --p-trim-left-f 5 --p-trim-left-r 5 --p-trunc-len-f 240 --p-trunc-len-r 240 --p-n-threads ${threads} --verbose
+     --o-representative-sequences rep-seqs.qza --p-trim-left-f 5 --p-trim-left-r 5 --p-trunc-len-f 240 --p-trunc-len-r 240 --p-n-threads ${threads} --verbose \
+     --output-dir dada_results
 
-    qiime feature-table summarize --i-table dada-table.qza \
-      --m-sample-metadata-file ${metadata} \
-      --o-visualization dada-table.qzv
+    qiime phylogeny align-to-tree-mafft-fasttree \
+      --i-sequences rep-seqs.qza \
+      --o-alignment aligned-rep-seqs.qza \
+      --o-masked-alignment masked-aligned-rep-seqs.qza \
+      --o-tree unrooted-tree.qza \
+      --o-rooted-tree rooted-tree.qza
 
-    qiime feature-table tabulate-seqs --i-data rep-seqs.qza \
-      --o-visualization rep-seqs.qzv
+    qiime feature-classifier classify-sklearn \
+      --i-classifier ${classifier} \
+      --i-reads rep-seqs.qza \
+      --o-classification taxonomy.qza
 
+    qiime taxa filter-table \
+      --i-table dada-table.qza \
+      --i-taxonomy taxonomy.qza \
+      --p-exclude mitochondria,chloroplast \
+      --o-filtered-table filtered-dada-table.qza
+
+    unzip filtered-dada-table.qza -d exported-qiime2/
+    unzip aligned-rep-seqs.qza -d exported-qiime2/
+    unzip rooted-tree.qza -d exported-qiime2/
+    unzip taxonomy.qza -d exported-qiime2/
+
+    mkdir Qiime2_results/
+    mv exported-qiime2/*/data/*  Qiime2_results/
+    biom convert -i Qiime2_results/feature-table.biom -o Qiime2_results/otu_table_json.biom --table-type="OTU table" --to-json
+
+    rm demux.qza
+    rm -rf exported-qiime2/
     """
 }
+
+/* Explore the addition of picrust2
+qiime picrust2 full-pipeline \
+   --i-table Proj_3_4_CB-dada-table-filtered.qza \
+   --i-seq Proj_3_4_CB-rep-seqs.qza \
+   --output-dir projs_3_4_CB-picrust2_output \
+   --p-threads 1 \
+   --p-hsp-method pic \
+   --p-max-nsti 2 \
+   --verbose
+*/
+
+
+
+/* Other visualization commands for qiime2 that could be added into the pipeline
+#qiime feature-table summarize --i-table dada-table.qza \
+#  --m-sample-metadata-file ${metadata} \
+#  --o-visualization dada-table.qzv
+
+#qiime feature-table tabulate-seqs --i-data rep-seqs.qza \
+#  --o-visualization rep-seqs.qzv
+
+#qiime metadata tabulate \
+#  --m-input-file taxonomy.qza \
+#  --o-visualization taxonomy.qzv
+
+#qiime taxa barplot \
+#  --i-table filtered-dada-table.qza \
+#  --i-taxonomy taxonomy.qza \
+#  --m-metadata-file ${metadata} \
+#  --o-visualization filtered_taxa-bar-plots.qzv
+*/
 
 
 
