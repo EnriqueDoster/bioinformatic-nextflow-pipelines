@@ -69,10 +69,6 @@ Channel
     .fromFilePairs( params.reads, flat: true )
     .ifEmpty { exit 1, "Read pair files could not be found: ${params.reads}" }
     .set { reads }
-Channel
-    .fromFilePairs( params.reads, flat: true )
-    .ifEmpty { exit 1, "Read pair files could not be found: ${params.reads}" }
-    .set { reads }
 
 process RunKraken {
     tag { sample_id }
@@ -100,8 +96,6 @@ process RunKraken {
     """
     kraken2 --preload --db ${kraken_db} --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.report > ${sample_id}.kraken.raw
     kraken2 --preload --db ${kraken_db} --confidence 1 --paired ${forward} ${reverse} --threads ${threads} --report ${sample_id}.kraken.filtered.report > ${sample_id}.kraken.filtered.raw
-    gunzip -c ${forward} > ${sample_id}.copy.R1.fastq
-    gunzip -c ${reverse} > ${sample_id}.copy.R2.fastq
     """
 }
 
@@ -118,13 +112,9 @@ process KrakenLongToWide {
 
     output:
         file("kraken_analytic_matrix.csv") into kraken_master_matrix
-        file("TaxaID.txt") into taxa_ID
 
     """
-    grep 'Salmonella enterica' ${kraken_reports} | cut -s -f 5 | sort | uniq > TaxaID.txt
-    mkdir ret
-    python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
-    mv ret/kraken_analytic_matrix.csv .
+    ${PYTHON3} $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o kraken_analytic_matrix.csv
     """
 }
 
@@ -138,13 +128,9 @@ process FilteredKrakenLongToWide {
 
     output:
         file("filtered_kraken_analytic_matrix.csv") into filter_kraken_master_matrix
-        file("TaxaID.txt") into filter_taxa_ID
 
     """
-    grep 'Salmonella enterica' ${kraken_reports} | cut -s -f 5 | sort | uniq > TaxaID.txt
-    mkdir ret
-    python3 $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o ret
-    mv ret/kraken_analytic_matrix.csv filtered_kraken_analytic_matrix.csv
+    ${PYTHON3} $baseDir/bin/kraken2_long_to_wide.py -i ${kraken_reports} -o filtered_kraken_analytic_matrix.csv
     """
 }
 
