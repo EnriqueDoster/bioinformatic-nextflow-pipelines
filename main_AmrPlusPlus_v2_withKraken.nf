@@ -54,10 +54,10 @@ Channel
 process RunQC {
     tag { sample_id }
 
-    publishDir "${params.output}/RunQC", mode: 'copy', pattern: '*.fastq',
+    publishDir "${params.output}/RunQC", mode: 'copy', pattern: '*.fastq.gz',
         saveAs: { filename ->
-            if(filename.indexOf("P.fastq") > 0) "Paired/$filename"
-            else if(filename.indexOf("U.fastq") > 0) "Unpaired/$filename"
+            if(filename.indexOf("P.fastq.gz") > 0) "Paired/$filename"
+            else if(filename.indexOf("U.fastq.gz") > 0) "Unpaired/$filename"
             else {}
         }
 
@@ -307,7 +307,7 @@ if( !params.amr_index ) {
 process AlignToAMR {
      tag { sample_id }
 
-     publishDir "${params.output}/AlignToAMR", mode: "copy"
+     publishDir "${params.output}/AlignToAMR", mode: "symlink"
 
      input:
          set sample_id, file(forward), file(reverse) from non_host_fastq_megares
@@ -345,15 +345,20 @@ process RunResistome {
 
     output:
         file("${sample_id}.gene.tsv") into (megares_resistome_counts, SNP_confirm_long)
+        file("${sample_id}.group.tsv") into (megares_group_counts)
+        file("${sample_id}.mechanism.tsv") into (megares_mech_counts)
+        file("${sample_id}.class.tsv") into (megares_class_counts)
+        file("${sample_id}.type.tsv") into (megares_type_counts)
 
     """
-    ${RESISTOME} -ref_fp ${amr} \
+    $baseDir/bin/resistome -ref_fp ${amr} \
       -annot_fp ${annotation} \
       -sam_fp ${sam} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mechanism.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -t ${threshold}
     """
 }
@@ -390,15 +395,20 @@ process SamDedupRunResistome {
 
     output:
         file("${sample_id}.gene.tsv") into (megares_dedup_resistome_counts)
+        file("${sample_id}.group.tsv") into (megares_dedup_group_counts)
+        file("${sample_id}.mechanism.tsv") into (megares_dedup_mech_counts)
+        file("${sample_id}.class.tsv") into (megares_dedup_class_counts)
+        file("${sample_id}.type.tsv") into (megares_dedup_type_counts)
 
     """
-    ${RESISTOME} -ref_fp ${amr} \
+    $baseDir/bin/resistome -ref_fp ${amr} \
       -annot_fp ${annotation} \
       -sam_fp ${sam} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mechanism.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -t ${threshold}
     """
 }
@@ -435,14 +445,15 @@ process RunRarefaction {
         set sample_id, file("*.tsv") into (rarefaction)
 
     """
-    ${RAREFACTION} \
+    $baseDir/bin/rarefaction \
       -ref_fp ${amr} \
       -sam_fp ${sam} \
       -annot_fp ${annotation} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mech.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -min ${min} \
       -max ${max} \
       -skip ${skip} \
