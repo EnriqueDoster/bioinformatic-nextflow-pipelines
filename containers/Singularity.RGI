@@ -34,13 +34,13 @@ From: debian:jessie-slim
     . /usr/local/bin/activate AmrPlusPlus_env
       
     #change $PATH  
-    echo 'export PATH=$PATH:/usr/local/envs/AmrPlusPlus_env/bin/' >> $SINGULARITY_ENVIRONMENT
+    echo 'export PATH=/usr/local/envs/AmrPlusPlus_env/bin/:$PATH' >> $SINGULARITY_ENVIRONMENT
 
 
     # Make sure all the tools have the right permissions to use the tools
      chmod -R 777 /usr/local/
      wget -q -O card-data.tar.bz2 https://card.mcmaster.ca/latest/data && tar xfvj card-data.tar.bz2 
-     rgi load -i card.json
+     /usr/local/envs/AmrPlusPlus_env/bin//rgi load -i card.json
 
 %test
     #which bwa
