@@ -16,9 +16,9 @@ if( params.host ) {
     host = file(params.host)
     if( !host.exists() ) return host_error(host)
 }
-if( params.amr ) {
-    amr = file(params.amr)
-    if( !amr.exists() ) return amr_error(amr)
+if( params.database ) {
+    database = file(params.database)
+    if( !database.exists() ) return database_error(database)
 }
 if( params.adapters ) {
     adapters = file(params.adapters)
@@ -65,7 +65,7 @@ process AlignDBToContigs {
 
      input:
          set sample_id, file(contigs) from reads
-         file amr
+         file database
 
      output:
          set sample_id, file("${sample_id}_blat_megares.psl") into (blat_alignments)
@@ -73,7 +73,7 @@ process AlignDBToContigs {
 
      """
      sed -i 's/ /|/g' ${contigs} 
-     blat ${amr} ${contigs} ${sample_id}_blat_megares.psl
+     blat ${database} ${contigs} ${sample_id}_blat_megares.psl
      ${PYTHON3} $baseDir/bin/assembly_stats.py ${contigs} ${sample_id} 200 1000 500
      """
 }
@@ -144,9 +144,9 @@ def adapter_error(def input) {
     return 1
 }
 
-def amr_error(def input) {
+def database_error(def input) {
     println ""
-    println "[params.amr] fail to open: '" + input + "' : No such file or directory"
+    println "[params.database] fail to open: '" + input + "' : No such file or directory"
     println ""
     return 1
 }
