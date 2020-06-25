@@ -113,10 +113,11 @@ process AlignToAMR {
      ${SAMTOOLS} sort ${sample_id}.amr.alignment.sorted.fix.bam -o ${sample_id}.amr.alignment.sorted.fix.sorted.bam
      ${SAMTOOLS} rmdup -S ${sample_id}.amr.alignment.sorted.fix.sorted.bam ${sample_id}.amr.alignment.dedup.bam
      ${SAMTOOLS} view -h -o ${sample_id}.amr.alignment.dedup.sam ${sample_id}.amr.alignment.dedup.bam
-     #rm ${sample_id}.amr.alignment.bam
-     #rm ${sample_id}.amr.alignment.sorted*.bam
+     rm ${sample_id}.amr.alignment.bam
+     rm ${sample_id}.amr.alignment.sorted*.bam
      """
 }
+
 
 process RunResistome {
     tag { sample_id }
@@ -130,20 +131,27 @@ process RunResistome {
 
     output:
         file("${sample_id}.gene.tsv") into (megares_resistome_counts, SNP_confirm_long)
+        file("${sample_id}.group.tsv") into (megares_group_counts)
+        file("${sample_id}.mechanism.tsv") into (megares_mech_counts)
+        file("${sample_id}.class.tsv") into (megares_class_counts)
+        file("${sample_id}.type.tsv") into (megares_type_counts)
 
     """
-    ${RESISTOME} -ref_fp ${amr} \
+    $baseDir/bin/resistome -ref_fp ${amr} \
       -annot_fp ${annotation} \
       -sam_fp ${sam} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mechanism.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -t ${threshold}
     """
 }
 
 megares_resistome_counts.toSortedList().set { megares_amr_l_to_w }
+
+
 
 process ResistomeResults {
     tag { }
@@ -162,6 +170,86 @@ process ResistomeResults {
 }
 
 
+/* samtools deduplication of megares alignment */
+process SamDedupRunResistome {
+    tag { sample_id }
+
+    publishDir "${params.output}/SamDedupRunResistome", mode: "copy"
+
+    input:
+        set sample_id, file(sam) from megares_dedup_resistome_sam
+        file annotation
+        file amr
+
+    output:
+        file("${sample_id}.gene.tsv") into (megares_dedup_resistome_counts)
+        file("${sample_id}.group.tsv") into (megares_dedup_group_counts)
+        file("${sample_id}.mechanism.tsv") into (megares_dedup_mech_counts)
+        file("${sample_id}.class.tsv") into (megares_dedup_class_counts)
+        file("${sample_id}.type.tsv") into (megares_dedup_type_counts)
+
+    """
+    $baseDir/bin/resistome -ref_fp ${amr} \
+      -annot_fp ${annotation} \
+      -sam_fp ${sam} \
+      -gene_fp ${sample_id}.gene.tsv \
+      -group_fp ${sample_id}.group.tsv \
+      -mech_fp ${sample_id}.mechanism.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
+      -t ${threshold}
+    """
+}
+
+megares_dedup_resistome_counts.toSortedList().set { megares_dedup_amr_l_to_w }
+
+
+process SamDedupResistomeResults {
+    tag { }
+
+    publishDir "${params.output}/SamDedup_ResistomeResults", mode: "copy"
+
+    input:
+        file(resistomes) from megares_dedup_amr_l_to_w
+
+    output:
+        file("SamDedup_AMR_analytic_matrix.csv") into megares_dedup_amr_master_matrix
+
+    """
+    ${PYTHON3} $baseDir/bin/amr_long_to_wide.py -i ${resistomes} -o SamDedup_AMR_analytic_matrix.csv
+    """
+}
+
+process RunRarefaction {
+    tag { sample_id }
+
+    publishDir "${params.output}/RunRarefaction", mode: "copy"
+
+    input:
+        set sample_id, file(sam) from megares_rarefaction_sam
+        file annotation
+        file amr
+
+    output:
+        set sample_id, file("*.tsv") into (rarefaction)
+
+    """
+    $baseDir/bin/rarefaction \
+      -ref_fp ${amr} \
+      -sam_fp ${sam} \
+      -annot_fp ${annotation} \
+      -gene_fp ${sample_id}.gene.tsv \
+      -group_fp ${sample_id}.group.tsv \
+      -mech_fp ${sample_id}.mech.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
+      -min ${min} \
+      -max ${max} \
+      -skip ${skip} \
+      -samples ${samples} \
+      -t ${threshold}
+    """
+}
 
 
 def nextflow_version_error() {
