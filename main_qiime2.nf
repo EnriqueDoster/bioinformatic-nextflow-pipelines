@@ -78,15 +78,15 @@ reads
 process Qiime2InitialProcessing {
     tag { sample_id }
 
-    publishDir "${params.output}/Qiime2_results", mode: "copy"
+    publishDir "${params.output}/read_data/", mode: "copy"
 
 
     input:
         file(manifest) from ch_manifest
 
     output:
-        file("Qiime2_results/*") into (all_results)
-        file("dada_results/*") into (dada_results)
+        file("demux.qza") into (sample_qza)
+        file("demux.qzv") into (visualization_qzv)
 
     """
     qiime tools import \
@@ -95,9 +95,30 @@ process Qiime2InitialProcessing {
       --output-path demux.qza \
       --input-format PairedEndFastqManifestPhred33
 
-    qiime dada2 denoise-paired --i-demultiplexed-seqs demux.qza \
+    qiime demux summarize \
+      --i-data demux.qza \
+      --o-visualization demux.qzv
+
+    """
+}
+
+
+
+process Qiime2TaxaClassification {
+    tag { sample_id }
+
+    publishDir "${params.output}/Qiime2_results", mode: "copy"
+
+    input:
+        file(qza) from sample_qza
+
+    output:
+        file("Qiime2_results/*") into (all_results)
+        file("dada_results/*") into (dada_results)
+    """
+    qiime dada2 denoise-paired --i-demultiplexed-seqs ${qza} \
      --o-table dada-table.qza \
-     --o-representative-sequences rep-seqs.qza --p-trim-left-f 5 --p-trim-left-r 5 --p-trunc-len-f 240 --p-trunc-len-r 240 --p-n-threads ${threads} --verbose \
+     --o-representative-sequences rep-seqs.qza --p-trim-left-f 19 --p-trim-left-r 20 --p-trunc-len-f 170 --p-trunc-len-r 170 --p-n-threads ${threads} --verbose \
      --output-dir dada_results
 
     qiime phylogeny align-to-tree-mafft-fasttree \
@@ -131,6 +152,8 @@ process Qiime2InitialProcessing {
     rm -rf exported-qiime2/
     """
 }
+    
+
 
 /* Explore the addition of picrust2
 qiime picrust2 full-pipeline \
