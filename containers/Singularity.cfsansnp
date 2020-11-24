@@ -103,7 +103,7 @@ From: ubuntu:xenial
   	&& make install \
   	&& cd /usr/local/tmp/ \
   	&& wget http://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.3.5-2/sratoolkit.2.3.5-2-ubuntu64.tar.gz -q \
-  	&& tar -zxf /tmp/sratoolkit.2.3.5-2-ubuntu64.tar.gz \
+  	&& tar -zxf /usr/local/tmp/sratoolkit.2.3.5-2-ubuntu64.tar.gz \
   	&& cp /usr/local/tmp/sratoolkit.2.3.5-2-ubuntu64/bin/fastq-dump.2.3.5.2 /usr/bin/fastq-dump \
   	&& rm -r /usr/local/tmp/*
 
