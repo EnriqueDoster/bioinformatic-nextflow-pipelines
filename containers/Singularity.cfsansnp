@@ -92,20 +92,19 @@ From: ubuntu:xenial
 
   # get VarScan and SRA-toolkit
   cd /usr/local
-  mkdir /tmp/
   wget http://downloads.sourceforge.net/project/varscan/VarScan.v2.3.7.jar -q \
   	&& cp VarScan.v2.3.7.jar /usr/bin/VarScan.jar \
   	&& wget http://www.niehs.nih.gov/research/resources/assets/docs/artsrcchocolatecherrycake031915linuxtgz.tgz -q \
-  	&& tar -zxf /tmp/artsrcchocolatecherrycake031915linuxtgz.tgz \
-  	&& cd /tmp/art_src_ChocolateCherryCake_Linux \
+  	&& tar -zxf /usr/local/tmp/artsrcchocolatecherrycake031915linuxtgz.tgz \
+  	&& cd /usr/local/tmp/art_src_ChocolateCherryCake_Linux \
   	&& ./configure \
   	&& make \
   	&& make install \
-  	&& cd /tmp/ \
+  	&& cd /usr/local/tmp/ \
   	&& wget http://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.3.5-2/sratoolkit.2.3.5-2-ubuntu64.tar.gz -q \
   	&& tar -zxf /tmp/sratoolkit.2.3.5-2-ubuntu64.tar.gz \
-  	&& cp /tmp/sratoolkit.2.3.5-2-ubuntu64/bin/fastq-dump.2.3.5.2 /usr/bin/fastq-dump \
-  	&& rm -r /tmp/*
+  	&& cp /usr/local/tmp/sratoolkit.2.3.5-2-ubuntu64/bin/fastq-dump.2.3.5.2 /usr/bin/fastq-dump \
+  	&& rm -r /usr/local/tmp/*
 
   #install snp-pipeline and snp-mutator
   cd /usr/local
