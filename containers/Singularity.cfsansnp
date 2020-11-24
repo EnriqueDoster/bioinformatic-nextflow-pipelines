@@ -91,6 +91,7 @@ From: ubuntu:xenial
   #    rm gatk.tar.bz2
 
   # get VarScan and SRA-toolkit
+  mkdir /usr/local/tmp
   cd /usr/local/tmp
   wget http://downloads.sourceforge.net/project/varscan/VarScan.v2.3.7.jar -q \
   	&& cp VarScan.v2.3.7.jar /usr/bin/VarScan.jar \
