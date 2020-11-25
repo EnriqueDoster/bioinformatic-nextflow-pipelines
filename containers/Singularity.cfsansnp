@@ -24,8 +24,6 @@ From: ubuntu:xenial
             make \
             perl \
             bzip2 \
-            python3 \
-            python3-pip \
             python3-dev \
             wget \
                     tabix \
@@ -40,14 +38,35 @@ From: ubuntu:xenial
                     libperl-dev \
         && apt-get clean
 
+    apt-get update
     # Change directory
     cd /usr/local
+    
+    # Install python3.6
+    wget https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tgz
+    tar -xvf Python-3.6.3.tgz
+    cd Python-3.6.3
+    ./configure
+    make
+    make install
+    
+    update-alternatives --install /usr/bin/python python /usr/local/Python-3.6.3/python 10
+    
+    echo 'export PATH=/usr/local/Python-3.6.3/:$PATH' >> $SINGULARITY_ENVIRONMENT
+    #echo 'export PATH=/usr/local/Python-3.6.3/:$PATH' >> $SINGULARITY_ENVIRONMENT
+   
+    #/usr/local/.local/bin
+    
 
   # install pip (code originally from Justin)
-  #wget https://bootstrap.pypa.io/get-pip.py -q \
-  #	&& python get-pip.py
+   cd /usr/local
+  wget https://bootstrap.pypa.io/get-pip.py -q \
+  	&& python3 get-pip.py
+    
+  update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 
   # install samtools, since the version in apt-get is too far out-of-date
+   cd /usr/local
   mkdir samtools &&\
     cd samtools &&\
     wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2 &&\
@@ -72,8 +91,8 @@ From: ubuntu:xenial
 
   # get picard jar file
   cd /usr/local
-  mkdir /picard &&\
-      cd /picard &&\
+  mkdir picard 
+      cd picard &&\
       wget https://github.com/broadinstitute/picard/releases/download/2.18.4/picard.jar
 
   # get GATK 3.8-1-0 jar flie
@@ -81,20 +100,13 @@ From: ubuntu:xenial
   git clone https://github.com/EnriqueDoster/sing_biotools.git
   mv sing_biotools/bin/GenomeAnalysisTK.jar /usr/local/bin/GenomeAnalysisTK.jar
   
-  # Code below causes this error:Reusing existing connection to gatk.broadinstitute.org:443.
-  #HTTP request sent, awaiting response... 403 Forbidden
-  #2020-11-24 13:55:44 ERROR 403: Forbidden.
-  #mkdir /gatk &&\
-  #    cd /gatk &&\
-  #    wget -O ./gatk.tar.bz2 'https://software.broadinstitute.org/gatk/download/auth?package=GATK-archive&version=3.8-1-0-gf15c1c3ef' &&\
-  #    tar -xjf gatk.tar.bz2 &&\
-  #    rm gatk.tar.bz2
+
 
   # get VarScan and SRA-toolkit
   mkdir /usr/local/tmp
   cd /usr/local/tmp
   wget http://downloads.sourceforge.net/project/varscan/VarScan.v2.3.7.jar -q \
-  	&& cp VarScan.v2.3.7.jar /usr/bin/VarScan.jar \
+  	&& cp VarScan.v2.3.7.jar /usr/local/bin/VarScan.jar \
   	&& wget http://www.niehs.nih.gov/research/resources/assets/docs/artsrcchocolatecherrycake031915linuxtgz.tgz -q \
   	&& tar -zxf /usr/local/tmp/artsrcchocolatecherrycake031915linuxtgz.tgz \
   	&& cd /usr/local/tmp/art_src_ChocolateCherryCake_Linux \
@@ -109,7 +121,8 @@ From: ubuntu:xenial
 
   #install snp-pipeline and snp-mutator
   cd /usr/local
-  pip install numpy snp-pipeline biopython snp-mutator
+  pip3 install numpy snp-pipeline biopython snp-mutator
+  
   
   # Test snp_pipeline (code originally from Justin). Running copy_snppipeline_data.py generates an message the the script is deprecated
   # but I figured I would leave it since the below commands test that the image runs properly.
@@ -124,16 +137,22 @@ From: ubuntu:xenial
 
     
     #Still experimenting with how to change $PATH location. Need to remove GATK jar file to work with cfsan snp
-    echo 'export CLASSPATH=/usr/local/VarScan.jar:$CLASSPATH' >> $SINGULARITY_ENVIRONMENT
+    echo 'export CLASSPATH=/usr/local/bin/VarScan.jar:$CLASSPATH' >> $SINGULARITY_ENVIRONMENT
     echo 'export CLASSPATH=/usr/local/picard/picard.jar:$CLASSPATH' >> $SINGULARITY_ENVIRONMENT
-    echo 'export CLASSPATH=/usr/local/bin/GenomeAnalysisTK.jar' >> $SINGULARITY_ENVIRONMENT
-
-  # set java CLASSPATH variables
-  #ENV CLASSPATH /usr/bin/VarScan.jar:/picard/picard.jar:/gatk/GenomeAnalysisTK-3.8-1-0-gf15c1c3ef/GenomeAnalysisTK.jar
-
-
+    echo 'export CLASSPATH=/usr/local/bin/GenomeAnalysisTK.jar:$CLASSPATH' >> $SINGULARITY_ENVIRONMENT
+    
+   
     # Make sure all the tools have the right permissions to use the tools
     chmod -R 777 /usr/local/
     
+    
+      # Code below causes this error:Reusing existing connection to gatk.broadinstitute.org:443.
+    #HTTP request sent, awaiting response... 403 Forbidden
+    #2020-11-24 13:55:44 ERROR 403: Forbidden.
+    #mkdir /gatk &&\
+    #    cd /gatk &&\
+    #    wget -O ./gatk.tar.bz2 'https://software.broadinstitute.org/gatk/download/auth?package=GATK-archive&version=3.8-1-0-gf15c1c3ef' &&\
+    #    tar -xjf gatk.tar.bz2 &&\
+    #    rm gatk.tar.bz2
+    
 %test
-
