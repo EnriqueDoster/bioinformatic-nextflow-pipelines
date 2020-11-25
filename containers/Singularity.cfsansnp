@@ -61,9 +61,7 @@ From: ubuntu:xenial
   # install pip (code originally from Justin)
    cd /usr/local
   wget https://bootstrap.pypa.io/get-pip.py -q \
-  	&& python3 get-pip.py
-    
-  update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+  	&& /usr/local/Python-3.6.3/python get-pip.py
 
   # install samtools, since the version in apt-get is too far out-of-date
    cd /usr/local
