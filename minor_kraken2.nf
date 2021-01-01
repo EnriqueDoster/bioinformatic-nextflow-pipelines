@@ -24,31 +24,6 @@ if( params.adapters ) {
     adapters = file(params.adapters)
     if( !adapters.exists() ) return adapter_error(adapters)
 }
-if( params.annotation ) {
-    annotation = file(params.annotation)
-    if( !annotation.exists() ) return annotation_error(annotation)
-}
-if( params.snp_annotation  ) {
-    snp_annotation = file(params.snp_annotation)
-}
-if( params.hmm_analysis_script ) {
-    hmm_analysis_script = file(params.hmm_analysis_script)
-}
-if( params.hmm_snp_annotation ) {
-    hmm_snp_annotation = file(params.hmm_snp_annotation)
-}
-if( params.hmm_annotation ) {
-    hmm_annotation = file(params.hmm_annotation)
-}
-if( params.hmm_group1 ) {
-    hmm_group1 = file(params.hmm_group1)
-}
-if( params.hmm_group2 ) {
-    hmm_group2 = file(params.hmm_group2)
-}
-if( params.hmm_group3 ) {
-    hmm_group3 = file(params.hmm_group3)
-}
 
 threads = params.threads
 threshold = params.threshold
