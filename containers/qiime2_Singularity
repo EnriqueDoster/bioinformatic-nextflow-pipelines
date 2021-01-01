@@ -1,7 +1,7 @@
 Bootstrap: docker
 From: debian:jessie-slim
 
-#Includes idba, trimmomatic, samtools, bwa, bedtools, freebayes, bbmap, vcftools, htslib, ncurses, kraken2, resistomeanalyzer, rarefactionanalyzer, SNPfinder
+#Includes Qiime2 installation with conda. Does not include apt install packages for Qiime2's GUI applications
 
 %environment
 
@@ -18,9 +18,9 @@ From: debian:jessie-slim
     r-base-core r-recommended hmmer\
     && rm -rf /var/lib/apt/lists/*
 
-    #Installing Anaconda 2 and Conda 4.5.11
-    wget -c https://repo.continuum.io/archive/Anaconda2-5.3.0-Linux-x86_64.sh
-    sh Anaconda2-5.3.0-Linux-x86_64.sh -bfp /usr/local
+    #Installing Anaconda 3 and Conda 5.3.1
+    wget -c https://repo.continuum.io/archive/Anaconda3-5.3.1-Linux-x86_64.sh
+    sh Anaconda3-5.3.1-Linux-x86_64.sh -bfp /usr/local
 
     # add bioconda channels
     conda config --add channels defaults
@@ -33,15 +33,17 @@ From: debian:jessie-slim
 
     . /usr/local/bin/activate AmrPlusPlus_qiime2_env
 
-    # install bulk of bioinformatic tools using conda
-    conda install biopython picrust
+    # install qiime2 and java using conda
+    conda install -c qiime2/label/r2020.11 qiime2
+    conda install -c bioconda/label/cf201901 java-jdk
+    
     
     # Run additional command for picrust
     download_picrust_files.py
     
     #ln -s /usr/local/envs/AmrPlusPlus_qiime2_env/bin/* /usr/local/bin/
     
-    #Still experimenting with how to change $PATH location. 
+    #change $PATH location. 
     echo 'export PATH=$PATH:/usr/local/envs/AmrPlusPlus_qiime2_env/bin/' >> $SINGULARITY_ENVIRONMENT
 
 %test
