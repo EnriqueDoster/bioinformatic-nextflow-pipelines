@@ -5,6 +5,8 @@
 # Reminder to first activate qiime2 anaconda environment
 /s/angus/index/common/tools/nextflow run main_qiime2.nf --reads "/s/angus/index/projs/projects_3_4/raw_sequence_data/16S_raw_combined/*_{1,2}.fq.gz" --classifier /media/AngusWorkspace/run_Jake/bioinformatic-nextflow-pipelines/gg-13-8-99-515-806-nb-classifier.qza --threads 10 -profile local_angus
 
+# Latest qiime2 version that this script worked with was: qiime2-2020.11
+
 */
 
 
@@ -37,10 +39,6 @@ if( params.annotation ) {
     if( !annotation.exists() ) return annotation_error(annotation)
 }
 
-if(params.kraken_db) {
-    kraken_db = file(params.kraken_db)
-}
-
 threads = params.threads
 
 threshold = params.threshold
@@ -69,9 +67,9 @@ Channel
 reads
     .map { name, forward, reverse -> [ forward.drop(forward.findLastIndexOf{"/"})[0], forward, reverse ] } //extract file name
     .map { name, forward, reverse -> [ name.toString().take(name.toString().indexOf("_")), forward, reverse ] } //extract sample name
-    .map { name, forward, reverse -> [ name +","+ forward + ",forward\n" + name +","+ reverse +",reverse" ] } //prepare basic synthax
+    .map { name, forward, reverse -> [ name +"\t"+ forward +"\t"+ reverse ] } //prepare basic synthax
     .flatten()
-    .collectFile(name: 'manifest.txt', newLine: true, storeDir: "${params.output}/demux", seed: "sample-id,absolute-filepath,direction")
+    .collectFile(name: 'manifest.txt', newLine: true, storeDir: "${params.output}/demux", seed: "sample-id\tforward-absolute-filepath\treverse-absolute-filepath")
     .set { ch_manifest }
 
 
@@ -93,7 +91,7 @@ process Qiime2InitialProcessing {
       --type 'SampleData[PairedEndSequencesWithQuality]' \
       --input-path ${manifest} \
       --output-path demux.qza \
-      --input-format PairedEndFastqManifestPhred33
+      --input-format PairedEndFastqManifestPhred33V2
 
     qiime demux summarize \
       --i-data demux.qza \
@@ -118,7 +116,7 @@ process Qiime2TaxaClassification {
     """
     qiime dada2 denoise-paired --i-demultiplexed-seqs ${qza} \
      --o-table dada-table.qza \
-     --o-representative-sequences rep-seqs.qza --p-trim-left-f 19 --p-trim-left-r 20 --p-trunc-len-f 170 --p-trunc-len-r 170 --p-n-threads ${threads} --verbose \
+     --o-representative-sequences rep-seqs.qza --p-trim-left-f ${leading) --p-trim-left-r ${trailing) --p-trunc-len-f 230 --p-trunc-len-r 230 --p-n-threads ${threads} --verbose \
      --output-dir dada_results
 
     qiime phylogeny align-to-tree-mafft-fasttree \
@@ -152,7 +150,7 @@ process Qiime2TaxaClassification {
     rm -rf exported-qiime2/
     """
 }
-    
+
 
 
 /* Explore the addition of picrust2
