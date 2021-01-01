@@ -27,11 +27,12 @@ From: debian:jessie-slim
     conda config --add channels conda-forge
     conda config --add channels bioconda
 
-    #Download file for qiime2 installation
-    wget https://data.qiime2.org/distro/core/qiime2-2019.7-py36-linux-conda.yml
-    conda env create -n AmrPlusPlus_qiime2_env --file qiime2-2019.7-py36-linux-conda.yml
+    wget https://data.qiime2.org/distro/core/qiime2-2020.11-py36-linux-conda.yml
+    conda env create -n qiime2-2020.11 --file qiime2-2020.11-py36-linux-conda.yml
+    # OPTIONAL CLEANUP
+    rm qiime2-2020.11-py36-linux-conda.yml
 
-    . /usr/local/bin/activate AmrPlusPlus_qiime2_env
+    . /usr/local/bin/activate qiime2-2020.11
 
     # install qiime2 and java using conda
     conda install -c qiime2/label/r2020.11 qiime2
@@ -41,10 +42,10 @@ From: debian:jessie-slim
     # Run additional command for picrust
     download_picrust_files.py
     
-    #ln -s /usr/local/envs/AmrPlusPlus_qiime2_env/bin/* /usr/local/bin/
+    #ln -s /usr/local/envs/qiime2-2020.11/bin/* /usr/local/bin/
     
     #change $PATH location. 
-    echo 'export PATH=$PATH:/usr/local/envs/AmrPlusPlus_qiime2_env/bin/' >> $SINGULARITY_ENVIRONMENT
+    echo 'export PATH=$PATH:/usr/local/envs/qiime2-2020.11/bin/' >> $SINGULARITY_ENVIRONMENT
 
 %test
     #which bwa
