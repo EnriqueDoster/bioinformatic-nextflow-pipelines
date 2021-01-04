@@ -4,6 +4,9 @@ From: debian:jessie-slim
 #Includes Qiime2 installation with conda. Does not include apt install packages for Qiime2's GUI applications
 
 %environment
+    PATH=/usr/local/conda/bin:$PATH
+    export PATH
+    . /usr/local/bin/activate qiime2-2020.11
 
 %post
     ## Jave install doesn't work, but can load java module from summit
@@ -37,16 +40,13 @@ From: debian:jessie-slim
 
     . /usr/local/bin/activate qiime2-2020.11
 
-    # install qiime2 and java using conda
-    conda install -c qiime2/label/r2020.11 qiime2
+    # install java using conda
     conda install -c bioconda/label/cf201901 java-jdk
-    
     
     # Run additional command for picrust
     download_picrust_files.py
     
-    #ln -s /usr/local/envs/qiime2-2020.11/bin/* /usr/local/bin/
-    
+
     #change $PATH location. 
     echo 'export PATH=$PATH:/usr/local/envs/qiime2-2020.11/bin/' >> $SINGULARITY_ENVIRONMENT
 
