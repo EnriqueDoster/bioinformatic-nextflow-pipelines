@@ -31,7 +31,7 @@ From: debian:jessie-slim
     conda config --add channels bioconda
 
     # Update conda
-    conda update -n base -c defaults conda
+    #conda update -n base -c defaults conda
 
     wget https://data.qiime2.org/distro/core/qiime2-2020.11-py36-linux-conda.yml
     conda env create -n qiime2-2020.11 --file qiime2-2020.11-py36-linux-conda.yml
@@ -44,7 +44,7 @@ From: debian:jessie-slim
     conda install -c bioconda/label/cf201901 java-jdk
     
     # Run additional command for picrust
-    download_picrust_files.py
+    #download_picrust_files.py
     
 
     #change $PATH location. 
