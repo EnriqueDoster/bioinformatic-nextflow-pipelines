@@ -25,13 +25,13 @@ From: debian:jessie-slim
     wget -c https://repo.continuum.io/archive/Anaconda3-5.3.1-Linux-x86_64.sh
     sh Anaconda3-5.3.1-Linux-x86_64.sh -bfp /usr/local
 
+    # Update conda
+    conda update -n base -c defaults conda
+
     # add bioconda channels
     conda config --add channels defaults
     conda config --add channels conda-forge
     conda config --add channels bioconda
-
-    # Update conda
-    conda update -n base -c defaults conda
 
     wget https://data.qiime2.org/distro/core/qiime2-2020.11-py36-linux-conda.yml
     conda env create -n qiime2-2020.11 --file qiime2-2020.11-py36-linux-conda.yml
