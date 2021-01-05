@@ -87,13 +87,13 @@ process Qiime2InitialProcessing {
         file("demux.qzv") into (visualization_qzv)
 
     """
-    qiime tools import \
+    ${QIIME2} tools import \
       --type 'SampleData[PairedEndSequencesWithQuality]' \
       --input-path ${manifest} \
       --output-path demux.qza \
       --input-format PairedEndFastqManifestPhred33V2
 
-    qiime demux summarize \
+    ${QIIME2} demux summarize \
       --i-data demux.qza \
       --o-visualization demux.qzv
 
