@@ -39,6 +39,7 @@ if( params.annotation ) {
     if( !annotation.exists() ) return annotation_error(annotation)
 }
 
+
 threads = params.threads
 
 threshold = params.threshold
