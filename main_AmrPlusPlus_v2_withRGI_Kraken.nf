@@ -32,6 +32,7 @@ if(params.kraken_db) {
     kraken_db = file(params.kraken_db)
 }
 
+card_db = file(params.card_db)
 
 threads = params.threads
 
@@ -55,10 +56,10 @@ Channel
 process RunQC {
     tag { sample_id }
 
-    publishDir "${params.output}/RunQC", mode: 'copy', pattern: '*.fastq',
+    publishDir "${params.output}/RunQC", mode: 'copy', pattern: '*.fastq.gz',
         saveAs: { filename ->
-            if(filename.indexOf("P.fastq") > 0) "Paired/$filename"
-            else if(filename.indexOf("U.fastq") > 0) "Unpaired/$filename"
+            if(filename.indexOf("P.fastq.gz") > 0) "Paired/$filename"
+            else if(filename.indexOf("U.fastq.gz") > 0) "Unpaired/$filename"
             else {}
         }
 
@@ -194,16 +195,17 @@ process NonHostReads {
         set sample_id, file(bam) from non_host_bam
 
     output:
-        set sample_id, file("${sample_id}.non.host.R1.fastq"), file("${sample_id}.non.host.R2.fastq") into (non_host_fastq_megares, non_host_fastq_dedup,non_host_fastq_kraken)
+        set sample_id, file("${sample_id}.non.host.R1.fastq.gz"), file("${sample_id}.non.host.R2.fastq.gz") into (non_host_fastq_megares, non_host_fastq_dedup,non_host_fastq_kraken)
 
     """
     ${BEDTOOLS}  \
        bamtofastq \
       -i ${bam} \
-      -fq ${sample_id}.non.host.R1.fastq \
-      -fq2 ${sample_id}.non.host.R2.fastq
+      -fq ${sample_id}.non.host.R1.fastq.gz \
+      -fq2 ${sample_id}.non.host.R2.fastq.gz
     """
 }
+
 
 /*
 -
@@ -334,8 +336,8 @@ process AlignToAMR {
      ${SAMTOOLS} sort ${sample_id}.amr.alignment.sorted.fix.bam -o ${sample_id}.amr.alignment.sorted.fix.sorted.bam
      ${SAMTOOLS} rmdup -S ${sample_id}.amr.alignment.sorted.fix.sorted.bam ${sample_id}.amr.alignment.dedup.bam
      ${SAMTOOLS} view -h -o ${sample_id}.amr.alignment.dedup.sam ${sample_id}.amr.alignment.dedup.bam
-     #rm ${sample_id}.amr.alignment.bam
-     #rm ${sample_id}.amr.alignment.sorted*.bam
+     rm ${sample_id}.amr.alignment.bam
+     rm ${sample_id}.amr.alignment.sorted*.bam
      """
 }
 
@@ -351,15 +353,20 @@ process RunResistome {
 
     output:
         file("${sample_id}.gene.tsv") into (megares_resistome_counts, SNP_confirm_long)
+        file("${sample_id}.group.tsv") into (megares_group_counts)
+        file("${sample_id}.mechanism.tsv") into (megares_mech_counts)
+        file("${sample_id}.class.tsv") into (megares_class_counts)
+        file("${sample_id}.type.tsv") into (megares_type_counts)
 
     """
-    ${RESISTOME} -ref_fp ${amr} \
+    $baseDir/bin/resistome -ref_fp ${amr} \
       -annot_fp ${annotation} \
       -sam_fp ${sam} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mechanism.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -t ${threshold}
     """
 }
@@ -396,15 +403,20 @@ process SamDedupRunResistome {
 
     output:
         file("${sample_id}.gene.tsv") into (megares_dedup_resistome_counts)
+        file("${sample_id}.group.tsv") into (megares_dedup_group_counts)
+        file("${sample_id}.mechanism.tsv") into (megares_dedup_mech_counts)
+        file("${sample_id}.class.tsv") into (megares_dedup_class_counts)
+        file("${sample_id}.type.tsv") into (megares_dedup_type_counts)
 
     """
-    ${RESISTOME} -ref_fp ${amr} \
+    $baseDir/bin/resistome -ref_fp ${amr} \
       -annot_fp ${annotation} \
       -sam_fp ${sam} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mechanism.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -t ${threshold}
     """
 }
@@ -441,14 +453,15 @@ process RunRarefaction {
         set sample_id, file("*.tsv") into (rarefaction)
 
     """
-    ${RAREFACTION} \
+    $baseDir/bin/rarefaction \
       -ref_fp ${amr} \
       -sam_fp ${sam} \
       -annot_fp ${annotation} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mech.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -min ${min} \
       -max ${max} \
       -skip ${skip} \
@@ -465,7 +478,9 @@ process RunRarefaction {
 
 process ExtractSNP {
      tag { sample_id }
-
+     
+     errorStrategy 'ignore'
+     
      publishDir "${params.output}/ExtractMegaresSNPs", mode: "copy",
          saveAs: { filename ->
              if(filename.indexOf(".snp.fasta") > 0) "SNP_fasta/$filename"
@@ -484,33 +499,47 @@ process ExtractSNP {
 
      """
      awk -F "\\t" '{if (\$1!="@SQ" && \$1!="@RG" && \$1!="@PG" && \$1!="@HD" && \$3="RequiresSNPConfirmation" ) {print ">"\$1"\\n"\$10}}' ${sam} | tr -d '"'  > ${sample_id}.snp.fasta
-     ${RESISTOME} -ref_fp ${amr} \
+     $baseDir/bin/resistome -ref_fp ${amr} \
       -annot_fp ${annotation} \
       -sam_fp ${sam} \
       -gene_fp ${sample_id}.gene.tsv \
       -group_fp ${sample_id}.group.tsv \
-      -class_fp ${sample_id}.class.tsv \
       -mech_fp ${sample_id}.mechanism.tsv \
+      -class_fp ${sample_id}.class.tsv \
+      -type_fp ${sample_id}.type.tsv \
       -t ${threshold}
      """
 }
 
+
+
+
 process RunRGI {
      tag { sample_id }
      errorStrategy 'ignore'
-	
-     publishDir "${params.output}/RunRGI", mode: "copy"
+
+
+     publishDir "${params.output}/RunRGI", mode: "symlink"
 
      input:
          set sample_id, file(fasta) from megares_snp_fasta
+         file card_db
 
      output:
-         set sample_id, file("${sample_id}_rgi_output.txt") into rgi_results
+         set sample_id, file("${sample_id}*rgi_output.txt") into rgi_results
 
      """
-     alias diamond='echo "${DIAMOND}"'
-     cp ${fasta} ${fasta}.temp.contig.fsa
-     ${RGI} main --low_quality --input_sequence ${fasta} --output_file ${sample_id}_rgi_output -a diamond -n ${threads} --clean
+     ${RGI} load --local -i ${card_db} --debug
+
+     # We are using the code provided in the following RGI github issue https://github.com/arpcard/rgi/issues/93
+     set +e
+     echo "Run RGI the first time"
+     ${RGI} main --input_sequence ${fasta} --output_file ${sample_id}_rgi_output -a diamond --local
+     set -e
+     echo "Run RGI again"
+     ${RGI} main --input_sequence ${fasta} --output_file ${sample_id}_rgi_output -a diamond --local
+
+
      """
 }
 
@@ -531,7 +560,7 @@ process SNPconfirmation {
          set sample_id, file(rgi) from rgi_results
 
      output:
-         set sample_id, file("${sample_id}_rgi_strict_hits.csv") into strict_snp_long_hits
+         set sample_id, file("${sample_id}_rgi_perfect_hits.csv") into perfect_snp_long_hits
      """
      ${PYTHON3} $baseDir/bin/RGI_aro_hits.py ${rgi} ${sample_id}
      """
@@ -544,18 +573,18 @@ process Confirmed_AMR_hits {
 
      input:
          set sample_id, file(megares_counts) from resistome_hits
-         set sample_id, file(strict_rgi_counts) from strict_snp_long_hits
+         set sample_id, file(perfect_rgi_counts) from perfect_snp_long_hits
 
      output:
-         file("${sample_id}*strict_SNP_confirmed_counts") into strict_confirmed_counts
+         file("${sample_id}*perfect_SNP_confirmed_counts") into perfect_confirmed_counts
 
      """
-     ${PYTHON3} $baseDir/bin/RGI_long_combine.py ${strict_rgi_counts} ${megares_counts} ${sample_id}.strict_SNP_confirmed_counts ${sample_id}
+     ${PYTHON3} $baseDir/bin/RGI_long_combine.py ${perfect_rgi_counts} ${megares_counts} ${sample_id}.perfect_SNP_confirmed_counts ${sample_id}
      """
 }
 
 
-strict_confirmed_counts.toSortedList().set { strict_confirmed_amr_l_to_w }
+perfect_confirmed_counts.toSortedList().set { perfect_confirmed_amr_l_to_w }
 
 process Confirmed_ResistomeResults {
      tag {}
@@ -563,13 +592,13 @@ process Confirmed_ResistomeResults {
      publishDir "${params.output}/Confirmed_ResistomeResults", mode: "copy"
 
      input:
-         file(strict_confirmed_resistomes) from strict_confirmed_amr_l_to_w
+         file(perfect_confirmed_resistomes) from perfect_confirmed_amr_l_to_w
 
      output:
-         file("strict_SNP_confirmed_AMR_analytic_matrix.csv") into strict_confirmed_matrix
+         file("perfect_SNP_confirmed_AMR_analytic_matrix.csv") into perfect_confirmed_matrix
 
      """
-     ${PYTHON3} $baseDir/bin/amr_long_to_wide.py -i ${strict_confirmed_resistomes} -o strict_SNP_confirmed_AMR_analytic_matrix.csv
+     ${PYTHON3} $baseDir/bin/amr_long_to_wide.py -i ${perfect_confirmed_resistomes} -o perfect_SNP_confirmed_AMR_analytic_matrix.csv
      """
 }
 
@@ -618,14 +647,22 @@ process RunDedupRGI {
 
      input:
          set sample_id, file(fasta) from dedup_megares_snp_fasta
+         file card_db
 
      output:
          set sample_id, file("${sample_id}_rgi_output.txt") into dedup_rgi_results
 
      """
-     alias diamond='echo "${DIAMOND}"'
-     cp ${fasta} ${fasta}.temp.contig.fsa
-     ${RGI} main --low_quality --input_sequence ${fasta} --output_file ${sample_id}_rgi_output -a diamond -n ${threads} --clean
+     ${RGI} load --local -i ${card_db} --debug
+
+     # We are using the code provided in the following RGI github issue https://github.com/arpcard/rgi/issues/93
+     set +e
+     echo "Run RGI the first time"
+     ${RGI} main --input_sequence ${fasta} --output_file ${sample_id}_rgi_output -a diamond --local
+     set -e
+     echo "Run RGI again"
+     ${RGI} main --input_sequence ${fasta} --output_file ${sample_id}_rgi_output -a diamond --local
+
      """
 }
 
@@ -646,7 +683,7 @@ process DedupSNPconfirmation {
          set sample_id, file(rgi) from dedup_rgi_results
 
      output:
-         set sample_id, file("${sample_id}_rgi_strict_hits.csv") into dedup_strict_snp_long_hits
+         set sample_id, file("${sample_id}_rgi_perfect_hits.csv") into dedup_perfect_snp_long_hits
      """
      ${PYTHON3} $baseDir/bin/RGI_aro_hits.py ${rgi} ${sample_id}
      """
@@ -659,18 +696,18 @@ process ConfirmDedupAMRHits {
 
      input:
          set sample_id, file(megares_counts) from dedup_resistome_hits
-         set sample_id, file(strict_rgi_counts) from dedup_strict_snp_long_hits
+         set sample_id, file(perfect_rgi_counts) from dedup_perfect_snp_long_hits
 
      output:
-         file("${sample_id}*strict_SNP_confirmed_counts") into dedup_strict_confirmed_counts
+         file("${sample_id}*perfect_SNP_confirmed_counts") into dedup_perfect_confirmed_counts
 
      """
-     ${PYTHON3} $baseDir/bin/RGI_long_combine.py ${strict_rgi_counts} ${megares_counts} ${sample_id}.strict_SNP_confirmed_counts ${sample_id}
+     ${PYTHON3} $baseDir/bin/RGI_long_combine.py ${perfect_rgi_counts} ${megares_counts} ${sample_id}.perfect_SNP_confirmed_counts ${sample_id}
      """
 }
 
 
-dedup_strict_confirmed_counts.toSortedList().set { dedup_strict_confirmed_amr_l_to_w }
+dedup_perfect_confirmed_counts.toSortedList().set { dedup_perfect_confirmed_amr_l_to_w }
 
 process DedupSNPConfirmed_ResistomeResults {
      tag {}
@@ -678,13 +715,13 @@ process DedupSNPConfirmed_ResistomeResults {
      publishDir "${params.output}/Confirmed_ResistomeResults", mode: "copy"
 
      input:
-         file(strict_confirmed_resistomes) from dedup_strict_confirmed_amr_l_to_w
+         file(perfect_confirmed_resistomes) from dedup_perfect_confirmed_amr_l_to_w
 
      output:
-         file("strict_SNP_confirmed_AMR_analytic_matrix.csv") into dedup_strict_confirmed_matrix
+         file("perfect_SNP_confirmed_AMR_analytic_matrix.csv") into dedup_perfect_confirmed_matrix
 
      """
-     ${PYTHON3} $baseDir/bin/amr_long_to_wide.py -i ${strict_confirmed_resistomes} -o strict_SNP_confirmed_dedup_AMR_analytic_matrix.csv
+     ${PYTHON3} $baseDir/bin/amr_long_to_wide.py -i ${perfect_confirmed_resistomes} -o perfect_SNP_confirmed_dedup_AMR_analytic_matrix.csv
      """
 }
 
