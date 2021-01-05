@@ -114,24 +114,24 @@ process Qiime2TaxaClassification {
         file("Qiime2_results/*") into (all_results)
         file("dada_results/*") into (dada_results)
     """
-    qiime dada2 denoise-paired --i-demultiplexed-seqs ${qza} \
+    ${QIIME2} dada2 denoise-paired --i-demultiplexed-seqs ${qza} \
      --o-table dada-table.qza \
      --o-representative-sequences rep-seqs.qza --p-trim-left-f ${leading) --p-trim-left-r ${trailing) --p-trunc-len-f 230 --p-trunc-len-r 230 --p-n-threads ${threads} --verbose \
      --output-dir dada_results
 
-    qiime phylogeny align-to-tree-mafft-fasttree \
+    ${QIIME2} phylogeny align-to-tree-mafft-fasttree \
       --i-sequences rep-seqs.qza \
       --o-alignment aligned-rep-seqs.qza \
       --o-masked-alignment masked-aligned-rep-seqs.qza \
       --o-tree unrooted-tree.qza \
       --o-rooted-tree rooted-tree.qza
 
-    qiime feature-classifier classify-sklearn \
+    ${QIIME2} feature-classifier classify-sklearn \
       --i-classifier ${classifier} \
       --i-reads rep-seqs.qza \
       --o-classification taxonomy.qza
 
-    qiime taxa filter-table \
+    ${QIIME2} taxa filter-table \
       --i-table dada-table.qza \
       --i-taxonomy taxonomy.qza \
       --p-exclude mitochondria,chloroplast \
@@ -144,7 +144,7 @@ process Qiime2TaxaClassification {
 
     mkdir Qiime2_results/
     mv exported-qiime2/*/data/*  Qiime2_results/
-    biom convert -i Qiime2_results/feature-table.biom -o Qiime2_results/otu_table_json.biom --table-type="OTU table" --to-json
+    ${BIOM} convert -i Qiime2_results/feature-table.biom -o Qiime2_results/otu_table_json.biom --table-type="OTU table" --to-json
 
     rm demux.qza
     rm -rf exported-qiime2/
