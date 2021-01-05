@@ -193,14 +193,14 @@ process NonHostReads {
         set sample_id, file(bam) from non_host_bam
 
     output:
-        set sample_id, file("${sample_id}.non.host.R1.fastq"), file("${sample_id}.non.host.R2.fastq") into (non_host_fastq_megares, non_host_fastq_dedup,non_host_fastq_kraken)
+        set sample_id, file("${sample_id}.non.host.R1.fastq.gz"), file("${sample_id}.non.host.R2.fastq.gz") into (non_host_fastq_megares, non_host_fastq_dedup,non_host_fastq_kraken)
 
     """
     ${BEDTOOLS}  \
        bamtofastq \
       -i ${bam} \
-      -fq ${sample_id}.non.host.R1.fastq \
-      -fq2 ${sample_id}.non.host.R2.fastq
+      -fq ${sample_id}.non.host.R1.fastq.gz \
+      -fq2 ${sample_id}.non.host.R2.fastq.gz
     """
 }
 
@@ -307,7 +307,7 @@ if( !params.amr_index ) {
 process AlignToAMR {
      tag { sample_id }
 
-     publishDir "${params.output}/AlignToAMR", mode: "symlink"
+     publishDir "${params.output}/AlignToAMR", mode: "copy"
 
      input:
          set sample_id, file(forward), file(reverse) from non_host_fastq_megares
@@ -328,8 +328,8 @@ process AlignToAMR {
      ${SAMTOOLS} sort ${sample_id}.amr.alignment.sorted.fix.bam -o ${sample_id}.amr.alignment.sorted.fix.sorted.bam
      ${SAMTOOLS} rmdup -S ${sample_id}.amr.alignment.sorted.fix.sorted.bam ${sample_id}.amr.alignment.dedup.bam
      ${SAMTOOLS} view -h -o ${sample_id}.amr.alignment.dedup.sam ${sample_id}.amr.alignment.dedup.bam
-     #rm ${sample_id}.amr.alignment.bam
-     #rm ${sample_id}.amr.alignment.sorted*.bam
+     rm ${sample_id}.amr.alignment.bam
+     rm ${sample_id}.amr.alignment.sorted*.bam
      """
 }
 
