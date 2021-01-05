@@ -26,7 +26,7 @@ From: debian:jessie-slim
     sh Anaconda3-5.3.1-Linux-x86_64.sh -bfp /usr/local
 
     # Update conda
-    conda update -n base -c defaults conda
+    #conda update -n base -c defaults conda
 
     # add bioconda channels
     conda config --add channels defaults
