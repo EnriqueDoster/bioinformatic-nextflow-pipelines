@@ -5,7 +5,7 @@
 # Reminder to first activate qiime2 anaconda environment
 /s/angus/index/common/tools/nextflow run main_qiime2.nf --reads "/s/angus/index/projs/projects_3_4/raw_sequence_data/16S_raw_combined/*_{1,2}.fq.gz" --classifier /media/AngusWorkspace/run_Jake/bioinformatic-nextflow-pipelines/gg-13-8-99-515-806-nb-classifier.qza --threads 10 -profile local_angus
 
-# Latest qiime2 version that this script worked with was: qiime2-2020.11
+# Latest qiime2 version that this script worked with was: qiime2-2019.10
 
 */
 
