@@ -109,7 +109,6 @@ process Qiime2TaxaClassification {
 
     input:
         file(qza) from sample_qza
-        file classifier
 
     output:
         file("Qiime2_results/*") into (all_results)
@@ -128,7 +127,7 @@ process Qiime2TaxaClassification {
       --o-rooted-tree rooted-tree.qza
 
     ${QIIME2} feature-classifier classify-sklearn \
-      --i-classifier ${classifier} \
+      --i-classifier $baseDir/${classifier}\
       --i-reads rep-seqs.qza \
       --o-classification taxonomy.qza
 
