@@ -54,7 +54,6 @@ trailing = params.trailing
 slidingwindow = params.slidingwindow
 minlen = params.minlen
 
-metadata = params.metadata
 classifier = params.classifier
 
 
@@ -117,7 +116,7 @@ process Qiime2TaxaClassification {
     """
     ${QIIME2} dada2 denoise-paired --i-demultiplexed-seqs ${qza} \
      --o-table dada-table.qza \
-     --o-representative-sequences rep-seqs.qza --p-trim-left-f ${leading) --p-trim-left-r ${trailing) --p-trunc-len-f 230 --p-trunc-len-r 230 --p-n-threads ${threads} --verbose \
+     --o-representative-sequences rep-seqs.qza --p-trim-left-f ${leading} --p-trim-left-r ${trailing} --p-trunc-len-f 230 --p-trunc-len-r 230 --p-n-threads ${threads} --verbose \
      --output-dir dada_results
 
     ${QIIME2} phylogeny align-to-tree-mafft-fasttree \
