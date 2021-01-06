@@ -109,7 +109,7 @@ process Qiime2TaxaClassification {
 
     input:
         file(qza) from sample_qza
-        classifier
+        file classifier
 
     output:
         file("Qiime2_results/*") into (all_results)
